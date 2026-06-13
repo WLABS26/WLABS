@@ -1,0 +1,408 @@
+// WLABS - Website Laboratory
+// Prisma schema - PostgreSQL
+// Run `npx prisma generate` after any change (also runs automatically via postinstall).
+// Run `npx prisma migrate dev --name <name>` to create/apply a migration once DATABASE_URL is configured.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =========================================================
+// Enums
+// =========================================================
+
+/// CRM pipeline status for a Lead - see docs/scoring-rubric.md
+enum LeadStatus {
+  imported
+  qualified
+  rejected
+  crawled
+  audited
+  high_opportunity
+  medium_opportunity
+  low_opportunity
+  preview_generated
+  preview_qc_passed
+  preview_needs_review
+  email_drafted
+  email_qc_passed
+  approved
+  contacted
+  replied
+  booked_call
+  won
+  lost
+  suppressed
+}
+
+/// Output of the Lead Qualification Agent
+enum LeadQualification {
+  ready_for_crawl
+  needs_manual_review
+  rejected
+}
+
+/// Output of the Website Audit Agent (and Audit.qualificationStatus)
+enum OpportunityLevel {
+  high_opportunity
+  medium_opportunity
+  low_opportunity
+  reject
+}
+
+/// Output of the Website Crawl Agent
+enum CrawlStatus {
+  pending
+  success
+  failed
+  blocked
+  timeout
+  invalid_url
+}
+
+/// Shared QC status used by Preview QC Agent and Email QC Agent
+enum QcStatus {
+  passed
+  needs_review
+  failed
+}
+
+/// Lifecycle status of a generated Preview
+enum PreviewStatus {
+  draft
+  generated
+  needs_review
+  approved
+  published
+}
+
+/// Lifecycle status of an EmailDraft
+enum EmailStatus {
+  draft
+  needs_review
+  do_not_send
+  approved
+  exported
+  sent
+  bounced
+  opted_out
+}
+
+/// Email Drafting Agent variants
+enum EmailVariant {
+  direct_preview
+  audit_first
+  soft_consult
+  follow_up_1
+  follow_up_2
+  breakup
+}
+
+/// Status of an inbound request from the public site
+enum InboundRequestStatus {
+  new
+  processing
+  converted
+  closed
+}
+
+/// Status of a WorkflowRun (Agent Architecture Requirements)
+enum WorkflowRunStatus {
+  pending
+  running
+  waiting_for_approval
+  completed
+  failed
+  cancelled
+  paused
+}
+
+/// Status of an individual WorkflowStep (agent execution)
+enum AgentStepStatus {
+  pending
+  running
+  completed
+  failed
+  skipped
+  waiting_for_approval
+  retrying
+}
+
+// =========================================================
+// Core CRM models
+// =========================================================
+
+model Lead {
+  id           String  @id @default(cuid())
+  businessName String
+  slug         String  @unique
+  industry     String
+  websiteUrl   String?
+  city         String?
+  country      String?
+
+  contactEmail   String?
+  contactPhone   String?
+  contactPerson  String?
+
+  source    String?
+  sourceUrl String?
+  notes     String?
+
+  status              LeadStatus         @default(imported)
+  qualificationStatus LeadQualification?
+  auditScore          Int?
+  doNotContact        Boolean            @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  websiteCaptures WebsiteCapture[]
+  audits          Audit[]
+  redesignBriefs  RedesignBrief[]
+  previews        Preview[]
+  emailDrafts     EmailDraft[]
+  activities      Activity[]
+  workflowSteps   WorkflowStep[]
+  inboundRequests InboundRequest[]
+
+  @@index([status])
+  @@index([industry])
+  @@index([websiteUrl])
+  @@index([contactEmail])
+  @@index([qualificationStatus])
+}
+
+model WebsiteCapture {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  html            String? @db.Text
+  title           String?
+  metaDescription String?
+  h1              String?
+  extractedText   String? @db.Text
+
+  desktopScreenshotUrl String?
+  mobileScreenshotUrl  String?
+
+  lighthouseJson    Json?
+  extractedDataJson Json?
+
+  crawlStatus  CrawlStatus @default(pending)
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model Audit {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  overallScore       Int
+  categoryScoresJson Json
+  topIssuesJson      Json
+  quickWinsJson      Json
+
+  recommendedPositioning       String?
+  recommendedPageStructureJson Json?
+  salesAngle                    String?
+  urgencyReason                 String?
+  redesignPotential             String?
+
+  qualificationStatus OpportunityLevel
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model RedesignBrief {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  industry       String?
+  businessSummary String? @db.Text
+  targetCustomer  String?
+
+  currentWeaknessesJson     Json?
+  redesignOpportunitiesJson Json?
+
+  recommendedHeadline    String?
+  recommendedSubheadline String?
+  suggestedCtasJson       Json?
+  recommendedSectionsJson Json?
+
+  visualStyleDirection    String?
+  credibilityElementsJson Json?
+  localSeoAngle           String?
+  beforeAfterNarrative    String? @db.Text
+  emailPitchAngle         String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model Preview {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  slug  String  @unique
+  token String? @unique
+
+  status PreviewStatus @default(draft)
+
+  contentJson Json
+  themeJson   Json?
+  previewUrl  String?
+
+  viewCount     Int @default(0)
+  ctaClickCount Int @default(0)
+
+  qcStatus     QcStatus?
+  qcIssuesJson Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([status])
+}
+
+model EmailDraft {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  subject String
+  body    String @db.Text
+  variant EmailVariant
+
+  status EmailStatus @default(draft)
+
+  personalizationJson Json?
+  complianceFlagsJson Json?
+
+  qcStatus     QcStatus?
+  qcIssuesJson Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([status])
+  @@index([variant])
+}
+
+model Activity {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  type         String
+  description  String
+  metadataJson Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([type])
+}
+
+model Suppression {
+  id String @id @default(cuid())
+
+  email      String?
+  websiteUrl String?
+  reason     String
+
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([websiteUrl])
+}
+
+model InboundRequest {
+  id String @id @default(cuid())
+
+  name         String
+  businessName String?
+  websiteUrl   String?
+  email        String
+  phone        String?
+  industry     String?
+  message      String? @db.Text
+
+  status InboundRequestStatus @default(new)
+
+  leadId String?
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([email])
+}
+
+// =========================================================
+// Internal agentic workflow engine
+// =========================================================
+
+model WorkflowRun {
+  id String @id @default(cuid())
+
+  workflowType String
+  status       WorkflowRunStatus @default(pending)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdBy   String?
+
+  metadataJson Json?
+
+  createdAt DateTime @default(now())
+
+  steps WorkflowStep[]
+
+  @@index([workflowType])
+  @@index([status])
+}
+
+model WorkflowStep {
+  id            String      @id @default(cuid())
+  workflowRunId String
+  workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  leadId String?
+  lead   Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  agentName String
+  status    AgentStepStatus @default(pending)
+
+  inputJson  Json?
+  outputJson Json?
+  errorJson  Json?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  retryCount  Int       @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([workflowRunId])
+  @@index([leadId])
+  @@index([agentName])
+  @@index([status])
+}

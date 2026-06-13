@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: wlabs-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wlabs
+      POSTGRES_PASSWORD: wlabs
+      POSTGRES_DB: wlabs
+    ports:
+      - "5432:5432"
+    volumes:
+      - wlabs_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  wlabs_postgres_data:
