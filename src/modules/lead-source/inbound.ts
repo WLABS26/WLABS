@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/utils";
 import { logActivity } from "@/modules/crm/activity";
+import { generateUniqueSlug } from "@/modules/crm/leads";
 import { checkSuppression } from "@/modules/lead-source/suppression";
 
 export interface InboundLeadInput {
@@ -101,17 +101,4 @@ export async function processInboundLead(input: InboundLeadInput): Promise<Inbou
   });
 
   return { inboundRequestId: inboundRequest.id, leadId: lead.id, status: "created" };
-}
-
-async function generateUniqueSlug(businessName: string) {
-  const base = slugify(businessName) || "lead";
-  let slug = base;
-  let counter = 1;
-
-  while (await prisma.lead.findUnique({ where: { slug } })) {
-    counter += 1;
-    slug = `${base}-${counter}`;
-  }
-
-  return slug;
 }
