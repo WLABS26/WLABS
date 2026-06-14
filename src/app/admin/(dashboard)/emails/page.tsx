@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Download } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,11 +36,20 @@ export default async function EmailsPage({ searchParams }: EmailsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white">Email drafts</h1>
-        <p className="mt-1 text-sm text-muted">
-          Outreach drafts are never sent automatically — approve them here, then export and send manually.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Email drafts</h1>
+          <p className="mt-1 text-sm text-muted">
+            Outreach drafts are never sent automatically — approve them here, then export and send manually.
+          </p>
+        </div>
+        <a
+          href="/admin/emails/export"
+          className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/5"
+        >
+          <Download className="size-4" />
+          Export approved (CSV)
+        </a>
       </div>
 
       <div className="flex flex-wrap gap-2">

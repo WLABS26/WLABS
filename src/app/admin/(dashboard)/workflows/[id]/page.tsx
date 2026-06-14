@@ -4,10 +4,13 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AgentStepStatusBadge, WorkflowRunStatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/utils";
 import { getWorkflowRun } from "@/modules/agents/workflow";
+
+import { cancelRunAction, pauseRunAction, rerunPipelineAction, resumeRunAction } from "../actions";
 
 interface WorkflowRunPageProps {
   params: Promise<{ id: string }>;
@@ -26,6 +29,8 @@ export default async function WorkflowRunPage({ params }: WorkflowRunPageProps) 
   if (!run) notFound();
 
   const stepsWithErrors = run.steps.filter((step) => step.errorJson);
+  const leadId = run.steps.find((step) => step.leadId)?.leadId ?? null;
+  const isActive = run.status === "running" || run.status === "pending";
 
   return (
     <div className="space-y-6">
@@ -43,6 +48,34 @@ export default async function WorkflowRunPage({ params }: WorkflowRunPageProps) 
           </p>
         </div>
         <WorkflowRunStatusBadge status={run.status} />
+      </div>
+
+      {/* Run controls */}
+      <div className="flex flex-wrap gap-2">
+        {isActive && (
+          <form action={pauseRunAction}>
+            <input type="hidden" name="runId" value={run.id} />
+            <Button type="submit" size="sm" variant="outline">Pause</Button>
+          </form>
+        )}
+        {run.status === "paused" && (
+          <form action={resumeRunAction}>
+            <input type="hidden" name="runId" value={run.id} />
+            <Button type="submit" size="sm" variant="outline">Resume</Button>
+          </form>
+        )}
+        {(isActive || run.status === "paused") && (
+          <form action={cancelRunAction}>
+            <input type="hidden" name="runId" value={run.id} />
+            <Button type="submit" size="sm" variant="ghost" className="text-red-400 hover:text-red-300">Cancel</Button>
+          </form>
+        )}
+        {leadId && (run.status === "failed" || run.status === "cancelled") && (
+          <form action={rerunPipelineAction}>
+            <input type="hidden" name="leadId" value={leadId} />
+            <Button type="submit" size="sm" variant="subtle">Re-run pipeline</Button>
+          </form>
+        )}
       </div>
 
       <Card>

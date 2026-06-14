@@ -3,10 +3,12 @@ import Link from "next/link";
 import { Workflow } from "lucide-react";
 
 import { WorkflowRunStatusBadge } from "@/components/admin/status-badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/utils";
 import { listWorkflowRuns } from "@/modules/agents/workflow";
+
+import { StartBatchForm } from "./start-batch-form";
 
 export const metadata: Metadata = {
   title: "Workflows",
@@ -18,9 +20,19 @@ export default async function AdminWorkflowsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Workflow runs</h1>
-        <p className="mt-1 text-sm text-muted">Track the agent pipeline as it processes leads end to end.</p>
+        <h1 className="text-2xl font-bold text-white">Workflow center</h1>
+        <p className="mt-1 text-sm text-muted">Run controlled batches and track the agent pipeline end to end.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Start a batch</CardTitle>
+          <CardDescription>Process a controlled batch of eligible leads through an agent operation.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <StartBatchForm />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent>

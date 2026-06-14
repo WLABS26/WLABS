@@ -29,6 +29,9 @@ export { runPreviewGeneration, runPreviewQc } from "./preview-pipeline";
 export type { RunPreviewGenerationResult, RunPreviewQcResult } from "./preview-pipeline";
 export { runEmailDrafting } from "./email-pipeline";
 export type { RunEmailDraftingResult } from "./email-pipeline";
+export { runBatch } from "./batch";
+export type { BatchOptions, BatchOperation, BatchResult } from "./batch";
+export { pauseWorkflowRun, resumeWorkflowRun, cancelWorkflowRun } from "./controls";
 
 // Read helpers for the admin dashboard (defined in workflow.ts).
 export { listWorkflowRuns, getWorkflowRun } from "./workflow";
