@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { runLeadPipeline } from "@/modules/agents";
+import { runLeadPipeline, runPreviewGeneration } from "@/modules/agents";
 import { addLeadNote, updateLeadStatus } from "@/modules/crm/leads";
 import { LEAD_STATUSES, type LeadStatus } from "@/modules/shared/types";
 
@@ -105,5 +105,36 @@ export async function runPipelineAction(
     return { success: true, message };
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Pipeline failed to start." };
+  }
+}
+
+export interface GeneratePreviewState {
+  error?: string;
+  success?: boolean;
+  previewUrl?: string;
+}
+
+/** Generate (or regenerate) the preview homepage concept for a lead. */
+export async function generatePreviewAction(
+  _prevState: GeneratePreviewState | undefined,
+  formData: FormData,
+): Promise<GeneratePreviewState> {
+  const leadId = String(formData.get("leadId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  if (!leadId || !slug) {
+    return { error: "Missing lead reference." };
+  }
+
+  try {
+    const result = await runPreviewGeneration(leadId, { createdBy: "admin_dashboard" });
+
+    revalidatePath(`/admin/leads/${slug}`);
+    revalidatePath("/admin/previews");
+    revalidatePath("/admin");
+
+    return { success: true, previewUrl: `/preview/${result.slug}?token=${result.token}` };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Preview generation failed." };
   }
 }

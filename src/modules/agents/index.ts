@@ -17,9 +17,13 @@ export { leadImportAgent, LeadImportAgent } from "./lead-import-agent";
 export { leadQualificationAgent, LeadQualificationAgent } from "./lead-qualification-agent";
 export { websiteCrawlAgent, WebsiteCrawlAgent } from "./website-crawl-agent";
 export { websiteAuditAgent, WebsiteAuditAgent } from "./website-audit-agent";
+export { redesignStrategyAgent, RedesignStrategyAgent } from "./redesign-strategy-agent";
+export { previewGenerationAgent, PreviewGenerationAgent } from "./preview-generation-agent";
 
 export { runLeadPipeline } from "./lead-pipeline";
 export type { RunLeadPipelineResult, PipelineOutcome } from "./lead-pipeline";
+export { runPreviewGeneration } from "./preview-pipeline";
+export type { RunPreviewGenerationResult } from "./preview-pipeline";
 
 // Read helpers for the admin dashboard (defined in workflow.ts).
 export { listWorkflowRuns, getWorkflowRun } from "./workflow";

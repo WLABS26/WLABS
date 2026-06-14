@@ -11,6 +11,7 @@ import { INDUSTRIES } from "@/modules/shared/constants";
 import { AUDIT_CATEGORIES } from "@/modules/shared/types";
 
 import { AddNoteForm } from "./add-note-form";
+import { GeneratePreviewForm } from "./generate-preview-form";
 import { LeadStatusForm } from "./lead-status-form";
 import { RunPipelineForm } from "./run-pipeline-form";
 
@@ -152,6 +153,34 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
             </CardHeader>
             <CardContent>
               <RunPipelineForm leadId={lead.id} slug={lead.slug} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Preview concept</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {lead.previews.length > 0 && (
+                <div className="space-y-1.5">
+                  {lead.previews.map((preview) => (
+                    <a
+                      key={preview.id}
+                      href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm transition-colors hover:bg-white/5"
+                    >
+                      <span className="flex items-center gap-2 text-white">
+                        <ExternalLink className="size-3.5 text-muted" />
+                        /preview/{preview.slug}
+                      </span>
+                      <span className="text-xs text-muted">{preview.viewCount} views</span>
+                    </a>
+                  ))}
+                </div>
+              )}
+              <GeneratePreviewForm leadId={lead.id} slug={lead.slug} />
             </CardContent>
           </Card>
 

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, Menu, Users, Workflow } from "lucide-react";
+import { BarChart3, Eye, Inbox, LayoutDashboard, LogOut, Menu, Users, Workflow } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/modules/shared/constants";
@@ -14,7 +14,10 @@ import { logoutAction } from "@/app/admin/login/actions";
 const ADMIN_NAV_LINKS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Leads", href: "/admin/leads", icon: Users },
+  { label: "Previews", href: "/admin/previews", icon: Eye },
+  { label: "Review queue", href: "/admin/review", icon: Inbox },
   { label: "Workflows", href: "/admin/workflows", icon: Workflow },
+  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ] as const;
 
 function isActive(pathname: string, href: string) {
