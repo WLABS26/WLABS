@@ -60,6 +60,10 @@ npm run admin:hash -- "your-strong-password"
 
 Paste the printed hash into `ADMIN_PASSWORD_HASH` in `.env`.
 
+No terminal? Open [`tools/admin-credentials.html`](../tools/admin-credentials.html)
+in a browser — it generates `ADMIN_PASSWORD_HASH` and `SESSION_SECRET` the
+same way, entirely client-side.
+
 ## 5. Run
 
 ```bash

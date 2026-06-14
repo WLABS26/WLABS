@@ -1,5 +1,9 @@
 # WLABS Deployment
 
+> Not a developer, or don't have a terminal handy? See the
+> [Launch guide](./launch-guide.md) for a click-through Vercel + Neon
+> walkthrough that avoids the command line entirely.
+
 ## Vercel (recommended)
 
 1. Push the repo and import it into Vercel.

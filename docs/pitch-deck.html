@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WLABS — Investor Pitch Deck</title>
+<style>
+  :root {
+    --blue: #2563EB;
+    --cyan: #06B6D4;
+    --purple: #8B5CF6;
+    --navy: #0F172A;
+    --slate: #334155;
+    --gray: #F2F4F7;
+    --white: #FFFFFF;
+    --border: #E2E8F0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--navy);
+    color: var(--navy);
+  }
+  .deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 6vh 9vw; overflow-y: auto;
+    background: var(--white);
+    opacity: 0; visibility: hidden;
+    transition: opacity .25s ease;
+  }
+  .slide.active { opacity: 1; visibility: visible; }
+  .slide.dark {
+    background: linear-gradient(135deg, var(--navy) 0%, #1e293b 60%, #3b1f6e 150%);
+    color: var(--white);
+  }
+  .slide.dark .kicker { color: var(--cyan); }
+  .slide.dark .muted { color: #CBD5E1; }
+
+  .kicker {
+    text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; font-weight: 700;
+    color: var(--blue); margin-bottom: .75rem;
+  }
+  .slide h1 { font-size: clamp(2rem, 5vw, 3.25rem); margin: 0 0 .5rem; line-height: 1.1; letter-spacing: -0.01em; }
+  .slide h2 { font-size: clamp(1.5rem, 3.2vw, 2.25rem); margin: 0 0 1.25rem; line-height: 1.15; }
+  .slide p.lead { font-size: clamp(1rem, 1.6vw, 1.25rem); color: var(--slate); max-width: 46rem; line-height: 1.6; margin: 0; }
+  .muted { color: var(--slate); }
+  .section { margin-top: 1.5rem; }
+
+  .logo-wordmark {
+    font-weight: 800; font-size: 1.1rem; letter-spacing: .15em; text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+  .logo-wordmark.grad {
+    background: linear-gradient(90deg, var(--blue), var(--purple));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  .grid { display: grid; gap: 1.25rem; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+  .card {
+    background: var(--gray); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+  }
+  .card h3 { margin: .25rem 0 .4rem; font-size: 1.05rem; }
+  .card p { margin: 0; font-size: .92rem; color: var(--slate); line-height: 1.55; }
+  .slide.dark .card { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.12); }
+  .slide.dark .card p { color: #CBD5E1; }
+
+  .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.25rem; height: 2.25rem; border-radius: 999px;
+    background: var(--blue); color: #fff; font-weight: 700; font-size: .95rem;
+    margin-bottom: .6rem;
+  }
+  .num.c2 { background: var(--cyan); }
+  .num.c3 { background: var(--purple); }
+
+  .placeholder {
+    border: 1.5px dashed #94A3B8; border-radius: 10px; padding: .85rem 1rem;
+    color: var(--slate); font-size: .88rem; font-style: italic; background: #F8FAFC;
+    line-height: 1.6;
+  }
+  .slide.dark .placeholder { border-color: rgba(255,255,255,.35); color: #CBD5E1; background: rgba(255,255,255,.04); }
+
+  table.compare { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  table.compare th, table.compare td {
+    border: 1px solid var(--border); padding: .6rem .75rem; text-align: left; vertical-align: top;
+  }
+  table.compare th { background: var(--gray); font-weight: 700; }
+  table.compare td.us, table.compare th.us { background: #EFF6FF; font-weight: 600; }
+
+  .pill {
+    display: inline-block; border-radius: 999px; padding: .25rem .8rem; font-size: .75rem;
+    font-weight: 700; background: var(--gray); color: var(--slate); margin: 0 .3rem .3rem 0;
+  }
+  .pill.brand { background: #EFF6FF; color: var(--blue); }
+
+  .steps { display: flex; gap: 1.25rem; }
+  .step { flex: 1; border-top: 4px solid var(--blue); padding-top: .75rem; }
+  .step:nth-child(2) { border-color: var(--cyan); }
+  .step:nth-child(3) { border-color: var(--purple); }
+  .step:nth-child(4) { border-color: #0EA5E9; }
+  .step .step-num { font-size: .75rem; font-weight: 700; color: var(--blue); letter-spacing: .1em; }
+  .step:nth-child(2) .step-num { color: var(--cyan); }
+  .step:nth-child(3) .step-num { color: var(--purple); }
+  .step:nth-child(4) .step-num { color: #0EA5E9; }
+  .step h3 { margin: .35rem 0 .35rem; font-size: 1rem; }
+  .step p { margin: 0; font-size: .85rem; color: var(--slate); line-height: 1.5; }
+
+  .timeline { display: flex; gap: 1.25rem; }
+  .phase { flex: 1; border-radius: 14px; padding: 1.1rem 1.2rem; background: var(--gray); border: 1px solid var(--border); }
+  .phase .step-num { font-size: .75rem; font-weight: 700; letter-spacing: .1em; }
+  .phase:nth-child(1) .step-num { color: var(--blue); }
+  .phase:nth-child(2) .step-num { color: var(--cyan); }
+  .phase:nth-child(3) .step-num { color: var(--purple); }
+  .phase h3 { margin: .35rem 0 .5rem; font-size: 1rem; }
+  .phase ul { margin: 0; padding-left: 1.1rem; font-size: .85rem; color: var(--slate); line-height: 1.6; }
+
+  .price-card { border-radius: 14px; padding: 1.4rem; border: 1px solid var(--border); }
+  .price-card.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .price-card.primary .muted { color: #CBD5E1; }
+  .price-card .amount { font-size: 2.25rem; font-weight: 800; margin: .25rem 0 .75rem; }
+  .price-card .amount span { font-size: 1rem; font-weight: 600; opacity: .7; }
+  .price-card h3 { margin: 0 0 .5rem; font-size: 1.05rem; }
+  .price-card ul { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .85rem; line-height: 1.7; }
+
+  .bars { display: flex; flex-direction: column; gap: .6rem; }
+  .bar-row { display: grid; grid-template-columns: 8rem 1fr; align-items: center; gap: .75rem; font-size: .85rem; }
+  .bar-track { height: .6rem; background: var(--gray); border-radius: 999px; overflow: hidden; }
+  .slide.dark .bar-track { background: rgba(255,255,255,.12); }
+  .bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--blue), var(--cyan)); }
+
+  .code-pipeline {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: .85rem; text-align: center; padding: 1.4rem 1rem; line-height: 1.8;
+  }
+
+  .nav {
+    position: fixed; bottom: 1.25rem; right: 1.25rem; display: flex; align-items: center; gap: .6rem;
+    font-size: .8rem; color: var(--slate); z-index: 20; background: rgba(255,255,255,.92);
+    border-radius: 999px; padding: .4rem .75rem; box-shadow: 0 1px 4px rgba(15,23,42,.15);
+  }
+  .nav button {
+    border: none; background: var(--gray); border-radius: 999px; width: 2rem; height: 2rem;
+    font-size: 1rem; cursor: pointer; color: var(--navy); line-height: 1;
+  }
+  .nav button:hover { background: #E2E8F0; }
+
+  @media (max-width: 800px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .steps, .timeline { flex-direction: column; }
+    .bar-row { grid-template-columns: 6rem 1fr; }
+  }
+
+  @media print {
+    body { background: #fff; }
+    .nav { display: none; }
+    .slide {
+      position: relative; opacity: 1; visibility: visible;
+      width: 100%; height: 100vh; page-break-after: always;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <section class="slide dark active">
+    <div class="logo-wordmark grad">WLABS</div>
+    <h1>Website Laboratory</h1>
+    <p class="lead muted">We analyze. We design. We elevate.</p>
+    <p class="lead muted section">AI-powered website factory for local service businesses.<br>Old website &rarr; modern MVP website in 48 hours.</p>
+    <div class="placeholder section" style="max-width: 30rem;">[Founder name] &middot; [contact email] &middot; [date]</div>
+    <p class="muted section" style="font-size: .8rem;">Use the arrow keys or the buttons in the corner to navigate &middot; press Ctrl/Cmd+P to export this deck as a PDF.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">The Problem</div>
+    <h2>Outdated websites are quietly losing customers</h2>
+    <p class="lead">Millions of local businesses &mdash; dentists, plumbers, electricians, lawyers, accountants, restaurants, salons, real estate agencies &mdash; run on websites that actively cost them business.</p>
+    <div class="grid grid-3 section">
+      <div class="card"><h3>Outdated first impression</h3></div>
+      <div class="card"><h3>Weak mobile experience</h3></div>
+      <div class="card"><h3>Hidden contact options</h3></div>
+      <div class="card"><h3>Unclear service messaging</h3></div>
+      <div class="card"><h3>Low trust signals</h3></div>
+      <div class="card"><h3>Slow, confusing layout</h3></div>
+    </div>
+    <p class="muted section">Owners know it &mdash; but lack the time, design skills, and budget. Agencies are slow (4&ndash;12 weeks) and expensive (&euro;3,000&ndash;&euro;10,000+). Every visitor who bounces goes to a competitor with a better site.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">The Solution</div>
+    <h2>We Analyze. We Design. We Elevate.</h2>
+    <div class="grid grid-3 section">
+      <div class="card">
+        <div class="num">1</div>
+        <h3>We Analyze</h3>
+        <p>An AI-powered audit scores the business's current website against a standardized 100-point conversion and UX framework &mdash; and pinpoints exactly what's costing them customers.</p>
+      </div>
+      <div class="card">
+        <div class="num c2">2</div>
+        <h3>We Design</h3>
+        <p>We generate a modern MVP homepage concept, tailored to the business's industry, brand, and customers.</p>
+      </div>
+      <div class="card">
+        <div class="num c3">3</div>
+        <h3>We Elevate</h3>
+        <p>Fast, affordable launch support gets a professional, conversion-focused website live.</p>
+      </div>
+    </div>
+    <p class="lead section">The difference: the prospect <strong>sees their actual new homepage</strong> &mdash; a live, private preview &mdash; before they pay anything.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">How It Works</div>
+    <h2>From outdated site to live MVP in 4 steps</h2>
+    <div class="steps section">
+      <div class="step">
+        <div class="step-num">STEP 01</div>
+        <h3>Analyze</h3>
+        <p>Standardized AI-powered audit against the 100-point framework.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 02</div>
+        <h3>Design</h3>
+        <p>Modern MVP homepage concept, tailored to industry and brand.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 03</div>
+        <h3>Build</h3>
+        <p>Once approved: responsive layout, contact form, basic SEO.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">STEP 04</div>
+        <h3>Launch</h3>
+        <p>Live and hosting-ready within 48 hours of approval.</p>
+      </div>
+    </div>
+    <p class="muted section">Nothing is built or sent without the business owner's review and approval at every step.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Why Now</div>
+    <h2>The AI unlock: personalized outreach at scale</h2>
+    <p class="lead">At a &euro;999 price point, traditional agency economics don't support high-volume, personalized outreach &mdash; researching, auditing, mocking up, and writing a pitch for each prospect manually is too labor-intensive to do at scale.</p>
+    <div class="card code-pipeline section">
+      lead qualification &rarr; website crawl &rarr; 100-point audit &rarr; industry-tailored redesign &rarr; personalized outreach draft
+    </div>
+    <p class="lead section">A human stays in the loop for quality control and approval &mdash; but the heavy lifting happens automatically, at near-zero marginal cost. That turns &ldquo;send each prospect a working preview of their new website&rdquo; from a boutique service into a repeatable, scalable motion.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Product</div>
+    <h2>What's built today &mdash; the platform is complete</h2>
+    <div class="grid grid-2 section">
+      <div class="card"><p>Lead intake (CSV import, suppression / opt-out list)</p></div>
+      <div class="card"><p>SSRF-safe website crawler + metadata extraction</p></div>
+      <div class="card"><p>Deterministic 100-point audit engine, 7 categories</p></div>
+      <div class="card"><p>11 industry-specific redesign templates</p></div>
+      <div class="card"><p>Tokenized, shareable AI-generated preview pages</p></div>
+      <div class="card"><p>AI email drafting &mdash; 6 variants, with compliance &amp; QC checks</p></div>
+      <div class="card"><p>Admin CRM: pipeline, approvals, suppression, analytics</p></div>
+      <div class="card"><p>Batch / workflow orchestration for running campaigns at scale</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Business Model</div>
+    <h2>Simple, transparent pricing &mdash; built for volume</h2>
+    <div class="grid grid-2 section">
+      <div class="price-card primary">
+        <div class="muted">One-time</div>
+        <div class="amount">&euro;999</div>
+        <h3>Website MVP</h3>
+        <ul>
+          <li>Homepage redesign, mobile-first UX</li>
+          <li>Conversion-focused copy</li>
+          <li>Contact form, basic SEO</li>
+          <li>Preview before launch</li>
+          <li>48-hour turnaround after approval</li>
+        </ul>
+      </div>
+      <div class="price-card">
+        <div class="muted">Recurring</div>
+        <div class="amount">&euro;99<span>/mo</span></div>
+        <h3>Care Plan</h3>
+        <ul>
+          <li>Hosting</li>
+          <li>Minor updates</li>
+          <li>Technical maintenance</li>
+          <li>Performance monitoring &amp; support</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted section">Because the audit, redesign draft, and outreach copy are AI-generated, the marginal cost of reaching one more prospect is near zero &mdash; cost scales with review time and hosting, not outreach volume.</p>
+    <div class="placeholder section">Add once available: conversion rate, customer acquisition cost, LTV from pilot data</div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Market Opportunity</div>
+    <h2>A large, underserved market &mdash; sized by you</h2>
+    <p class="lead">WLABS targets local service businesses across 11+ categories: dentists, physiotherapists, plumbers, electricians, lawyers, accountants, real estate agencies, restaurants/caf&eacute;s, beauty/aesthetics clinics, construction/trades, and more.</p>
+    <div class="bars section">
+      <div class="bar-row"><span>TAM</span><div class="bar-track"><div class="bar-fill" style="width:100%;"></div></div></div>
+      <div class="bar-row"><span>SAM</span><div class="bar-track"><div class="bar-fill" style="width:60%;"></div></div></div>
+      <div class="bar-row"><span>SOM (Yr 1)</span><div class="bar-track"><div class="bar-fill" style="width:18%;"></div></div></div>
+    </div>
+    <div class="placeholder section">
+      TAM: [X] small/local service businesses across these categories in [region]<br>
+      SAM: [Y] with outdated, non-mobile-friendly, or low-conversion websites<br>
+      SOM (Year 1): [Z] businesses reachable in [target city/region] via direct outbound
+    </div>
+    <p class="muted section">Every town or city has dozens to hundreds of qualifying businesses &mdash; and the audit engine itself does the targeting and qualification work.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Go-To-Market</div>
+    <h2>The product is the outreach engine</h2>
+    <p class="lead">The audit identifies who needs help and how badly (an &ldquo;opportunity score&rdquo;). The platform builds the pitch automatically &mdash; including a working preview of the prospect's new site.</p>
+    <div class="card section">
+      <h3>Every outreach email includes:</h3>
+      <ul style="margin:.5rem 0 0; padding-left:1.1rem; font-size:.92rem; color:var(--slate); line-height:1.7;">
+        <li>The specific issues found on their current site</li>
+        <li>A link to their private, AI-generated preview</li>
+        <li>Transparent, fixed pricing</li>
+        <li>A clear opt-out, with suppression honored across the pipeline</li>
+      </ul>
+    </div>
+    <p class="lead section">Plan: land first customers in 1&ndash;2 verticals/regions, then use the results as case studies and testimonials for the next wave of outreach.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Competitive Landscape</div>
+    <h2>How WLABS compares</h2>
+    <table class="compare section">
+      <tr><th></th><th>Traditional agencies</th><th>Freelancers</th><th>DIY builders</th><th class="us">WLABS</th></tr>
+      <tr><td>Speed</td><td>Weeks&ndash;months</td><td>Variable</td><td>Fast, but owner does the work</td><td class="us">48 hrs after approval</td></tr>
+      <tr><td>Price</td><td>&euro;3,000&ndash;&euro;10,000+</td><td>Variable</td><td>Low + owner's time cost</td><td class="us">&euro;999 fixed</td></tr>
+      <tr><td>Owner effort</td><td>High (briefs, revisions)</td><td>Medium</td><td>Very high</td><td class="us">Low &mdash; review &amp; approve</td></tr>
+      <tr><td>How it's sold</td><td>Cold outreach, words/portfolio</td><td>Referrals</td><td>Self-serve</td><td class="us">Outreach with a working preview of their own new site</td></tr>
+    </table>
+    <p class="muted section">WLABS' edge: fixed transparent pricing, AI-assisted speed, human QC before anything ships, and a pitch that shows &mdash; not tells.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Traction</div>
+    <h2>Platform complete. Pre-revenue. Ready to launch.</h2>
+    <div class="section">
+      <span class="pill brand">7/7 development phases complete</span>
+      <span class="pill brand">Full automated test suite</span>
+      <span class="pill brand">Security &amp; compliance hardened</span>
+    </div>
+    <p class="lead section">Marketing site, lead sourcing and CRM, the internal AI agent pipeline, the 100-point audit engine, the redesign/preview generator, email drafting with compliance QC, batch workflow orchestration, and analytics &mdash; all built and working end-to-end.</p>
+    <div class="placeholder section">Replace with real metrics once available: campaigns sent, response rate, previews generated, first paying customers</div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Roadmap</div>
+    <h2>What's next</h2>
+    <div class="timeline section">
+      <div class="phase">
+        <div class="step-num">NOW</div>
+        <h3>Pilot campaigns</h3>
+        <ul>
+          <li>Run first campaigns in 1&ndash;2 verticals/regions</li>
+          <li>Validate messaging, conversion, pricing</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="step-num">NEXT</div>
+        <h3>Send &amp; verify</h3>
+        <ul>
+          <li>Connect real email sending (Resend/Postmark)</li>
+          <li>Deliverability: SPF/DKIM/DMARC, suppression, opt-out</li>
+          <li>Screenshot-based visual audits</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <div class="step-num">LATER</div>
+        <h3>Scale</h3>
+        <ul>
+          <li>New verticals &amp; geographies</li>
+          <li>Self-serve signup</li>
+          <li>Agency / white-label partnerships</li>
+          <li>Multi-page sites beyond the homepage MVP</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Team</div>
+    <h2>Who's building this</h2>
+    <div class="placeholder section" style="max-width: 32rem;">[Founder name] &mdash; [role / background] &mdash; [contact]</div>
+    <div class="placeholder section" style="max-width: 32rem;">[Add co-founders, advisors, or key collaborators]</div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">The Ask</div>
+    <h2>Raising [&euro; amount]</h2>
+    <p class="lead">To [use of funds &mdash; e.g. fund N months of outreach campaigns across N verticals, cover hosting/AI/email infrastructure costs, bring on [role]].</p>
+    <div class="bars section">
+      <div class="bar-row"><span>Outreach &amp; pilots</span><div class="bar-track"><div class="bar-fill" style="width:40%;"></div></div></div>
+      <div class="bar-row"><span>Infrastructure</span><div class="bar-track"><div class="bar-fill" style="width:25%;"></div></div></div>
+      <div class="bar-row"><span>Hiring</span><div class="bar-track"><div class="bar-fill" style="width:20%;"></div></div></div>
+      <div class="bar-row"><span>Reserve</span><div class="bar-track"><div class="bar-fill" style="width:15%;"></div></div></div>
+    </div>
+    <div class="placeholder section">Replace the categories and percentages above with your actual use-of-funds breakdown.</div>
+  </section>
+
+  <section class="slide dark">
+    <div class="logo-wordmark grad">WLABS</div>
+    <h1>Thank you</h1>
+    <p class="lead muted">We analyze. We design. We elevate.</p>
+    <div class="placeholder section" style="max-width: 30rem;">[contact email] &middot; [website] &middot; [date]</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prev" aria-label="Previous slide">&larr;</button>
+  <span id="counter">1 / 15</span>
+  <button id="next" aria-label="Next slide">&rarr;</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll(".slide");
+  var counter = document.getElementById("counter");
+  var current = 0;
+
+  function show(i) {
+    current = Math.max(0, Math.min(i, slides.length - 1));
+    slides.forEach(function (s, idx) {
+      s.classList.toggle("active", idx === current);
+    });
+    counter.textContent = (current + 1) + " / " + slides.length;
+  }
+
+  document.getElementById("next").addEventListener("click", function () { show(current + 1); });
+  document.getElementById("prev").addEventListener("click", function () { show(current - 1); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") { e.preventDefault(); show(current + 1); }
+    if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); show(current - 1); }
+  });
+
+  show(0);
+</script>
+</body>
+</html>

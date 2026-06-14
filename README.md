@@ -4,6 +4,10 @@
 > Modern websites, engineered to perform.
 > Old website → modern MVP website in 48 hours.
 
+**New here and not a developer?** Start with the
+[Launch guide](docs/launch-guide.md) — get this live in ~15 minutes, no
+coding required.
+
 WLABS is an AI-assisted "website factory": it identifies outdated small-business
 websites, scores them against a standardized 100-point audit, generates a modern
 MVP homepage redesign, and prepares a personalized pitch — with human review at
@@ -20,11 +24,13 @@ every key step.
 
 ## Documentation
 
+- [Launch guide](docs/launch-guide.md) — no-code guide to running this locally or deploying it live
 - [Setup guide](docs/setup.md) — install, env, database, admin, golden-path demo
 - [Agent system](docs/agents.md) — the Agent contract, runner, agents & pipelines
 - [Scoring rubric](docs/scoring-rubric.md) — the 100-point audit framework
 - [Deployment](docs/deployment.md) — Vercel, previews, email deliverability
 - [Security & compliance](docs/security.md) — auth, SSRF, GDPR/ePrivacy defaults
+- [Pitch deck](docs/pitch-deck.md) — investor pitch deck (presentable slideshow: `docs/pitch-deck.html`)
 
 ## Getting started
 
