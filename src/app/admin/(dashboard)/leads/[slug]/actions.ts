@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { runLeadPipeline } from "@/modules/agents";
 import { addLeadNote, updateLeadStatus } from "@/modules/crm/leads";
 import { LEAD_STATUSES, type LeadStatus } from "@/modules/shared/types";
 
@@ -59,4 +60,50 @@ export async function addLeadNoteAction(_prevState: AddNoteState | undefined, fo
   revalidatePath("/admin");
 
   return { success: true };
+}
+
+export interface RunPipelineState {
+  error?: string;
+  success?: boolean;
+  message?: string;
+}
+
+/**
+ * Run the full internal agent pipeline (qualify → crawl → audit) for one lead.
+ * This is the "run full workflow" action from the lead detail page.
+ */
+export async function runPipelineAction(
+  _prevState: RunPipelineState | undefined,
+  formData: FormData,
+): Promise<RunPipelineState> {
+  const leadId = String(formData.get("leadId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  if (!leadId || !slug) {
+    return { error: "Missing lead reference." };
+  }
+
+  try {
+    const result = await runLeadPipeline(leadId, { createdBy: "admin_dashboard" });
+
+    const message =
+      result.outcome === "audited"
+        ? `Pipeline complete - audit score ${result.auditScore}/100 (${result.opportunity?.replace(/_/g, " ")}).`
+        : result.outcome === "crawl_failed"
+          ? "Pipeline stopped - the website could not be crawled."
+          : result.outcome === "rejected"
+            ? "Lead was rejected during qualification."
+            : result.outcome === "needs_manual_review"
+              ? "Lead needs manual review (no valid website)."
+              : "Pipeline finished with errors - see the workflow run.";
+
+    revalidatePath(`/admin/leads/${slug}`);
+    revalidatePath("/admin/leads");
+    revalidatePath("/admin/workflows");
+    revalidatePath("/admin");
+
+    return { success: true, message };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Pipeline failed to start." };
+  }
 }

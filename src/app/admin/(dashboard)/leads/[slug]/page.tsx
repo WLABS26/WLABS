@@ -8,9 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { getLeadBySlug } from "@/modules/crm/leads";
 import { INDUSTRIES } from "@/modules/shared/constants";
+import { AUDIT_CATEGORIES } from "@/modules/shared/types";
 
 import { AddNoteForm } from "./add-note-form";
 import { LeadStatusForm } from "./lead-status-form";
+import { RunPipelineForm } from "./run-pipeline-form";
+
+const AUDIT_CATEGORY_LABELS: Record<string, string> = {
+  firstImpression: "First impression",
+  mobileExperience: "Mobile experience",
+  conversionReadiness: "Conversion readiness",
+  contentClarity: "Content clarity",
+  trustAndProof: "Trust & proof",
+  technicalBasics: "Technical basics",
+  localBusinessSignals: "Local signals",
+};
 
 const INDUSTRY_LABELS = new Map<string, string>(INDUSTRIES.map((industry) => [industry.value, industry.label]));
 
@@ -134,6 +146,15 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>Agent pipeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RunPipelineForm leadId={lead.id} slug={lead.slug} />
+            </CardContent>
+          </Card>
+
           {lead.inboundRequests.length > 0 && (
             <Card>
               <CardHeader>
@@ -180,6 +201,79 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
         </div>
 
         <div className="space-y-6 lg:col-span-2">
+          {lead.audits.length > 0 &&
+            (() => {
+              const audit = lead.audits[0];
+              const categoryScores = (audit.categoryScoresJson ?? {}) as Record<string, number>;
+              const topIssues = (audit.topIssuesJson ?? []) as string[];
+              const quickWins = (audit.quickWinsJson ?? []) as string[];
+              return (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Website audit</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-4xl font-bold text-white">{audit.overallScore}</span>
+                      <span className="text-sm text-muted">/ 100</span>
+                      <span className="ml-auto text-sm capitalize text-brand-cyan">
+                        {audit.qualificationStatus.replace(/_/g, " ")}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {AUDIT_CATEGORIES.map((category) => {
+                        const score = categoryScores[category.key] ?? 0;
+                        const pct = Math.round((score / category.maxPoints) * 100);
+                        return (
+                          <div key={category.key} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted">{AUDIT_CATEGORY_LABELS[category.key] ?? category.label}</span>
+                              <span className="text-white">
+                                {score}/{category.maxPoints}
+                              </span>
+                            </div>
+                            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                              <div className="h-full rounded-full bg-gradient-brand" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {topIssues.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">Top issues</p>
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-white">
+                          {topIssues.map((issue) => (
+                            <li key={issue}>{issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {quickWins.length > 0 && (
+                      <div>
+                        <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">Quick wins</p>
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-white">
+                          {quickWins.map((win) => (
+                            <li key={win}>{win}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {audit.salesAngle && (
+                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                        <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Sales angle</p>
+                        <p className="text-sm text-white">{audit.salesAngle}</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
           <Card>
             <CardHeader>
               <CardTitle>Add note</CardTitle>
