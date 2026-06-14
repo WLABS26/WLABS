@@ -16,7 +16,15 @@ every key step.
 - Hand-built **shadcn/ui**-style components (Radix primitives + CVA)
 - **PostgreSQL** via **Prisma 7** (driver adapter: `@prisma/adapter-pg`)
 - **Zod** for shared client/server validation
-- Internal agentic workflow engine (`src/modules/agents`, added in a later phase)
+- Internal agentic workflow engine (`src/modules/agents`) — no n8n / external tools
+
+## Documentation
+
+- [Setup guide](docs/setup.md) — install, env, database, admin, golden-path demo
+- [Agent system](docs/agents.md) — the Agent contract, runner, agents & pipelines
+- [Scoring rubric](docs/scoring-rubric.md) — the 100-point audit framework
+- [Deployment](docs/deployment.md) — Vercel, previews, email deliverability
+- [Security & compliance](docs/security.md) — auth, SSRF, GDPR/ePrivacy defaults
 
 ## Getting started
 
@@ -70,7 +78,9 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:push`   | Push `prisma/schema.prisma` to the database   |
 | `npm run db:migrate`| Create/apply a Prisma migration               |
 | `npm run db:studio` | Open Prisma Studio                            |
-| `npm run db:seed`   | Run `prisma/seed.ts`                          |
+| `npm run db:seed`   | Run `prisma/seed.ts` (mock dataset)           |
+| `npm run admin:hash`| Generate an `ADMIN_PASSWORD_HASH`             |
+| `npm test`          | Run the unit test suite (node:test)           |
 
 ## Project structure
 
@@ -79,27 +89,29 @@ src/
   app/
     (marketing)/        Marketing site (Home, Services, Process, Examples,
                          Pricing, FAQ, Contact, legal pages)
+    admin/               Admin dashboard (auth, leads, previews, emails,
+                         review queue, workflows, analytics)
+    preview/[slug]/      Public, token-gated preview homepage renderer
     api/                 API routes (lead capture, contact)
   components/
-    ui/                  Base UI primitives (button, card, input, ...)
-    layout/              Navbar, footer, background effects
-    sections/            Marketing page sections
-    forms/               Lead capture forms
-    visuals/             Score gauges, browser mockups, industry icons
-    motion/              Framer Motion helpers
+    ui/                  Base UI primitives (button, card, table, ...)
+    admin/               Sidebar, status badges, filters, pagination
+    layout/ sections/ forms/ visuals/ motion/   Marketing UI
   modules/
     shared/              Brand constants, shared types, audit rubric
-    lead-source/         Inbound lead processing, suppression, normalization
-    crm/                 Activity/timeline logging
-    agents/              Agentic workflow engine (later phase)
-    audit-engine/        100-point audit scoring (later phase)
-    crawler/             Website capture/crawling (later phase)
-    generator/           MVP redesign + preview generation (later phase)
-    email-engine/        Pitch email drafting + QC (later phase)
-  lib/                  Prisma client, validation schemas, rate limiting, utils
+    lead-source/         Inbound lead processing, CSV import, suppression
+    crm/                 Leads, dashboard, approvals, analytics, export
+    agents/              Agentic workflow engine: base agent, runner, agents,
+                         pipelines, batch orchestration
+    audit-engine/        100-point deterministic audit scoring
+    crawler/             SSRF-safe fetch + metadata extraction
+    generator/           Industry templates + preview content/types/store
+  lib/                  Prisma client, auth, AI provider, rate limiting, utils
 prisma/
-  schema.prisma          Database schema (11 models)
-  seed.ts                 Seed script
+  schema.prisma          Database schema (12 models)
+  seed.ts                 Seed script (mock dataset)
+docs/                    Setup, agents, scoring rubric, deployment, security
+tests/                   Unit tests (audit, SSRF, agents, CSV)
 ```
 
 ## Compliance notes
