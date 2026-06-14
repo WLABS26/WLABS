@@ -4,16 +4,35 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, Mail, MapPin, Phone, User, Workflow } from "lucide-react";
 
 import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge } from "@/components/admin/status-badge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { getLeadBySlug } from "@/modules/crm/leads";
 import { INDUSTRIES } from "@/modules/shared/constants";
 import { AUDIT_CATEGORIES } from "@/modules/shared/types";
 
+import {
+  approveEmailAction,
+  approvePreviewAction,
+  rejectEmailAction,
+  runPreviewQcAction,
+  suppressLeadAction,
+} from "../../actions";
 import { AddNoteForm } from "./add-note-form";
+import { DraftEmailForm } from "./draft-email-form";
 import { GeneratePreviewForm } from "./generate-preview-form";
 import { LeadStatusForm } from "./lead-status-form";
 import { RunPipelineForm } from "./run-pipeline-form";
+
+const EMAIL_STATUS_VARIANTS: Record<string, "default" | "brand" | "success" | "warning" | "destructive"> = {
+  draft: "default",
+  needs_review: "warning",
+  do_not_send: "destructive",
+  approved: "success",
+  exported: "brand",
+  sent: "success",
+};
 
 const AUDIT_CATEGORY_LABELS: Record<string, string> = {
   firstImpression: "First impression",
@@ -142,8 +161,18 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
             <CardHeader>
               <CardTitle>Pipeline status</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <LeadStatusForm leadId={lead.id} slug={lead.slug} status={lead.status} />
+              {!lead.doNotContact && lead.status !== "suppressed" && (
+                <form action={suppressLeadAction} className="border-t border-white/10 pt-3">
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <input type="hidden" name="slug" value={lead.slug} />
+                  <Button type="submit" size="sm" variant="ghost" className="w-full text-red-400 hover:text-red-300">
+                    <Ban className="size-4" />
+                    Suppress (do not contact)
+                  </Button>
+                </form>
+              )}
             </CardContent>
           </Card>
 
@@ -162,21 +191,40 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               {lead.previews.length > 0 && (
-                <div className="space-y-1.5">
+                <div className="space-y-3">
                   {lead.previews.map((preview) => (
-                    <a
-                      key={preview.id}
-                      href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-between gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm transition-colors hover:bg-white/5"
-                    >
-                      <span className="flex items-center gap-2 text-white">
-                        <ExternalLink className="size-3.5 text-muted" />
-                        /preview/{preview.slug}
-                      </span>
-                      <span className="text-xs text-muted">{preview.viewCount} views</span>
-                    </a>
+                    <div key={preview.id} className="space-y-2 rounded-lg border border-white/10 p-3">
+                      <a
+                        href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between gap-2 text-sm transition-colors hover:text-brand-cyan"
+                      >
+                        <span className="flex items-center gap-2 text-white">
+                          <ExternalLink className="size-3.5 text-muted" />
+                          /preview/{preview.slug}
+                        </span>
+                        <span className="text-xs text-muted">{preview.viewCount} views</span>
+                      </a>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant={preview.status === "approved" ? "success" : "default"}>{preview.status.replace(/_/g, " ")}</Badge>
+                        {preview.qcStatus && <Badge variant="outline">QC: {preview.qcStatus.replace(/_/g, " ")}</Badge>}
+                      </div>
+                      <div className="flex gap-2">
+                        <form action={runPreviewQcAction}>
+                          <input type="hidden" name="previewId" value={preview.id} />
+                          <input type="hidden" name="slug" value={lead.slug} />
+                          <Button type="submit" size="sm" variant="ghost">Run QC</Button>
+                        </form>
+                        {preview.status !== "approved" && (
+                          <form action={approvePreviewAction}>
+                            <input type="hidden" name="previewId" value={preview.id} />
+                            <input type="hidden" name="slug" value={lead.slug} />
+                            <Button type="submit" size="sm" variant="subtle">Approve preview</Button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               )}
@@ -302,6 +350,60 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                 </Card>
               );
             })()}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Outreach emails</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <DraftEmailForm leadId={lead.id} slug={lead.slug} />
+
+              {lead.emailDrafts.length > 0 && (
+                <div className="space-y-4 border-t border-white/10 pt-4">
+                  {lead.emailDrafts.map((email) => {
+                    const qcIssues = (email.qcIssuesJson as string[] | null) ?? [];
+                    return (
+                      <div key={email.id} className="space-y-2 rounded-lg border border-white/10 p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-sm font-medium text-white">{email.subject}</span>
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline">{email.variant.replace(/_/g, " ")}</Badge>
+                            <Badge variant={EMAIL_STATUS_VARIANTS[email.status] ?? "default"}>
+                              {email.status.replace(/_/g, " ")}
+                            </Badge>
+                          </div>
+                        </div>
+                        <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-slate-300">
+                          {email.body}
+                        </pre>
+                        {qcIssues.length > 0 && (
+                          <ul className="list-disc space-y-0.5 pl-4 text-xs text-amber-300">
+                            {qcIssues.map((issue) => (
+                              <li key={issue}>{issue}</li>
+                            ))}
+                          </ul>
+                        )}
+                        {email.status !== "approved" && email.status !== "do_not_send" && (
+                          <div className="flex gap-2">
+                            <form action={approveEmailAction}>
+                              <input type="hidden" name="emailDraftId" value={email.id} />
+                              <input type="hidden" name="slug" value={lead.slug} />
+                              <Button type="submit" size="sm" variant="subtle">Approve</Button>
+                            </form>
+                            <form action={rejectEmailAction}>
+                              <input type="hidden" name="emailDraftId" value={email.id} />
+                              <input type="hidden" name="slug" value={lead.slug} />
+                              <Button type="submit" size="sm" variant="ghost">Reject</Button>
+                            </form>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>

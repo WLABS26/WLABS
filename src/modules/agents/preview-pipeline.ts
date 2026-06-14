@@ -13,7 +13,10 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/modules/crm/activity";
 import { slugify } from "@/lib/utils";
 
+import type { PreviewContent } from "@/modules/generator/preview-types";
+
 import { previewGenerationAgent } from "./preview-generation-agent";
+import { previewQcAgent } from "./preview-qc-agent";
 import { redesignStrategyAgent } from "./redesign-strategy-agent";
 import { finishWorkflowRun, runAgentStep, startWorkflowRun } from "./runner";
 
@@ -145,4 +148,62 @@ export async function runPreviewGeneration(
   await finishWorkflowRun(run.id, "completed");
 
   return { workflowRunId: run.id, previewId: created.id, slug, token, ok: true };
+}
+
+export interface RunPreviewQcResult {
+  workflowRunId: string;
+  qcStatus: "passed" | "needs_review" | "failed";
+}
+
+/** Run the Preview QC Agent against a generated preview and record the result. */
+export async function runPreviewQc(previewId: string, options: { createdBy?: string } = {}): Promise<RunPreviewQcResult> {
+  const preview = await prisma.preview.findUnique({ where: { id: previewId }, include: { lead: true } });
+  if (!preview) throw new Error(`Preview not found: ${previewId}`);
+
+  const content = preview.contentJson as unknown as PreviewContent;
+
+  const run = await startWorkflowRun({
+    workflowType: "preview_qc",
+    leadId: preview.leadId,
+    createdBy: options.createdBy ?? "manual",
+    metadata: { previewId, slug: preview.slug },
+  });
+
+  const qc = await runAgentStep(
+    previewQcAgent,
+    {
+      expectedBusinessName: preview.lead.businessName,
+      expectedIndustry: preview.lead.industry,
+      headline: content.hero.headline,
+      ctaLabel: content.hero.primaryCta.label,
+      servicesCount: content.services.items.length,
+      trustNote: content.trust.note,
+      trustItems: content.trust.items,
+      metaBusinessName: content.meta.businessName,
+      metaIndustry: content.meta.industry,
+      city: content.meta.city,
+    },
+    { workflowRunId: run.id, leadId: preview.leadId },
+  );
+
+  const qcStatus = qc.output?.qcStatus ?? "needs_review";
+
+  await prisma.preview.update({
+    where: { id: previewId },
+    data: {
+      qcStatus,
+      qcIssuesJson: (qc.output?.qcIssues ?? []) as unknown as Prisma.InputJsonValue,
+      status: qcStatus === "passed" ? "generated" : "needs_review",
+    },
+  });
+
+  await prisma.lead.update({
+    where: { id: preview.leadId },
+    data: { status: qcStatus === "passed" ? "preview_qc_passed" : "preview_needs_review" },
+  });
+
+  await logActivity(preview.leadId, "preview_qc", `Preview QC ${qcStatus.replace(/_/g, " ")}.`, { previewId, qcStatus });
+
+  await finishWorkflowRun(run.id, "completed");
+  return { workflowRunId: run.id, qcStatus };
 }
