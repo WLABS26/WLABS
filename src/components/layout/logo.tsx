@@ -3,9 +3,9 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/modules/shared/constants";
 
-export function Logo({ className }: { className?: string }) {
+export function Logo({ className, href = "/" }: { className?: string; href?: string }) {
   return (
-    <Link href="/" className="group inline-flex items-center" aria-label={`${BRAND.name} home`}>
+    <Link href={href} className="group inline-flex items-center" aria-label={BRAND.name}>
       <svg
         viewBox="0 0 6431 1073"
         fill="none"
