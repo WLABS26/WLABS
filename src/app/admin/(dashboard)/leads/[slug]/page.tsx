@@ -19,6 +19,7 @@ import {
   runPreviewQcAction,
   suppressLeadAction,
 } from "../../actions";
+import { DeleteLeadButton } from "../delete-lead-button";
 import { AddNoteForm } from "./add-note-form";
 import { DraftEmailForm } from "./draft-email-form";
 import { GeneratePreviewForm } from "./generate-preview-form";
@@ -173,6 +174,16 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                   </Button>
                 </form>
               )}
+              <div className="border-t border-white/10 pt-3">
+                <DeleteLeadButton
+                  leadId={lead.id}
+                  businessName={lead.businessName}
+                  redirectTo="/admin/leads"
+                  className="w-full text-red-400 hover:text-red-300"
+                >
+                  Delete lead
+                </DeleteLeadButton>
+              </div>
             </CardContent>
           </Card>
 

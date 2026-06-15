@@ -13,6 +13,8 @@ import { listLeads } from "@/modules/crm/leads";
 import { INDUSTRIES } from "@/modules/shared/constants";
 import { LEAD_STATUSES, type LeadStatus } from "@/modules/shared/types";
 
+import { DeleteLeadButton } from "./delete-lead-button";
+
 export const metadata: Metadata = {
   title: "Leads",
 };
@@ -76,6 +78,7 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
                   <TableHead>Contact</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -97,6 +100,9 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
                       <LeadStatusBadge status={lead.status} />
                     </TableCell>
                     <TableCell className="text-muted">{formatDateTime(lead.createdAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <DeleteLeadButton leadId={lead.id} businessName={lead.businessName} />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

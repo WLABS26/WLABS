@@ -100,6 +100,11 @@ export async function addLeadNote(leadId: string, note: string) {
   return logActivity(leadId, "note", note);
 }
 
+/** Permanently delete a lead. Related activities, audits, previews, etc. cascade via the schema's FK constraints. */
+export async function deleteLead(leadId: string): Promise<void> {
+  await prisma.lead.delete({ where: { id: leadId } });
+}
+
 export interface CreateLeadInput {
   businessName: string;
   industry: string;

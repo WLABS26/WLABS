@@ -13,8 +13,8 @@ import { logoutAction } from "@/app/admin/login/actions";
 
 const ADMIN_NAV_LINKS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "Leads", href: "/admin/leads", icon: Users },
   { label: "Discovery", href: "/admin/discovery", icon: Compass },
+  { label: "Leads", href: "/admin/leads", icon: Users },
   { label: "Previews", href: "/admin/previews", icon: Eye },
   { label: "Emails", href: "/admin/emails", icon: Mail },
   { label: "Review queue", href: "/admin/review", icon: Inbox },
