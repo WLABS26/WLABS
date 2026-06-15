@@ -30,12 +30,26 @@ export interface ExtractedWebsiteData {
   hasPhone: boolean;
   hasEmail: boolean;
   hasMapEmbed: boolean;
+  /** Site still contains unedited template/placeholder copy or phone numbers. */
+  hasPlaceholderContent: boolean;
 }
 
 const SOCIAL_DOMAINS = ["facebook.com", "instagram.com", "twitter.com", "x.com", "linkedin.com", "youtube.com", "tiktok.com"];
 const CTA_KEYWORDS = [
   "contact", "book", "call", "quote", "get started", "request", "appointment", "enquire", "inquire",
   "order", "buy", "subscribe", "sign up", "schedule", "reserve", "free", "demo",
+];
+
+/** Unedited template copy or placeholder contact details left in by mistake. */
+const PLACEHOLDER_PATTERNS: RegExp[] = [
+  /lorem ipsum/i,
+  /welcome to (my|our|this|the) (new )?(website|site|blog)/i,
+  /coming soon/i,
+  /(site|page) (is currently )?under construction/i,
+  /(sample|placeholder|dummy)\s+(text|content|image)/i,
+  /your (company|business) name( here)?/i,
+  /insert (your )?(text|content|tagline|description) here/i,
+  /\b(123[\s.-]?456[\s.-]?7890|555[\s.-]?555[\s.-]?5555|000[\s.-]?000[\s.-]?0000|123[\s.-]?123[\s.-]?1234)\b/,
 ];
 
 function decodeEntities(input: string): string {
@@ -158,5 +172,6 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
     hasPhone: phones.length > 0,
     hasEmail: emails.length > 0,
     hasMapEmbed: lower.includes("google.com/maps") || lower.includes("maps.googleapis.com") || lower.includes("openstreetmap"),
+    hasPlaceholderContent: PLACEHOLDER_PATTERNS.some((re) => re.test(rawHtml)),
   };
 }

@@ -8,7 +8,7 @@
 import { prisma } from "@/lib/prisma";
 
 export async function getReviewQueue() {
-  const [previewsNeedingReview, emailsNeedingReview, failedSteps, highOpportunityLeads, doNotSendEmails] =
+  const [previewsNeedingReview, emailsNeedingReview, failedSteps, highOpportunityLeads, dedicatedSalesLeads, doNotSendEmails] =
     await Promise.all([
       prisma.preview.findMany({
         where: { OR: [{ status: "needs_review" }, { qcStatus: "needs_review" }, { qcStatus: "failed" }] },
@@ -31,6 +31,11 @@ export async function getReviewQueue() {
         orderBy: { auditScore: "asc" },
         take: 20,
       }),
+      prisma.lead.findMany({
+        where: { status: "dedicated_sales" },
+        orderBy: { auditScore: "desc" },
+        take: 20,
+      }),
       prisma.emailDraft.findMany({
         where: { status: "do_not_send" },
         orderBy: { createdAt: "desc" },
@@ -43,12 +48,14 @@ export async function getReviewQueue() {
     emailsNeedingReview,
     failedSteps,
     highOpportunityLeads,
+    dedicatedSalesLeads,
     doNotSendEmails,
     totals: {
       previews: previewsNeedingReview.length,
       emails: emailsNeedingReview.length,
       failed: failedSteps.length,
       highOpportunity: highOpportunityLeads.length,
+      dedicatedSales: dedicatedSalesLeads.length,
       compliance: doNotSendEmails.length,
     },
   };

@@ -22,6 +22,7 @@ export const LEAD_STATUSES = [
   "high_opportunity",
   "medium_opportunity",
   "low_opportunity",
+  "dedicated_sales",
   "preview_generated",
   "preview_qc_passed",
   "preview_needs_review",

@@ -27,6 +27,7 @@ enum LeadStatus {
   high_opportunity
   medium_opportunity
   low_opportunity
+  dedicated_sales
   preview_generated
   preview_qc_passed
   preview_needs_review
@@ -134,6 +135,14 @@ enum AgentStepStatus {
   retrying
 }
 
+/// Status of a Scope Market discovery run
+enum DiscoveryRunStatus {
+  discovering
+  processing
+  completed
+  failed
+}
+
 // =========================================================
 // Core CRM models
 // =========================================================
@@ -154,6 +163,11 @@ model Lead {
   source    String?
   sourceUrl String?
   notes     String?
+
+  /// Google Places place_id when sourced via Scope Market - dedup key across repeat runs.
+  discoverySourceId String? @unique
+  /// IndustryKey searched when this lead was discovered.
+  discoveryCategory String?
 
   status              LeadStatus         @default(imported)
   qualificationStatus LeadQualification?
@@ -219,6 +233,13 @@ model Audit {
   salesAngle                    String?
   urgencyReason                 String?
   redesignPotential             String?
+
+  /// Harsher, specific UX/conversion problems (AI-enhanced; template fallback in mock mode).
+  criticalFindingsJson Json?
+  /// 1-2 sentence comparison to best-practice sites in the same industry.
+  bestPracticeComparison String?
+  /// Qualitative gap vs. market benchmarks.
+  benchmarkGap String?
 
   qualificationStatus OpportunityLevel
 
@@ -375,7 +396,8 @@ model WorkflowRun {
 
   createdAt DateTime @default(now())
 
-  steps WorkflowStep[]
+  steps        WorkflowStep[]
+  discoveryRun DiscoveryRun?
 
   @@index([workflowType])
   @@index([status])
@@ -406,4 +428,36 @@ model WorkflowStep {
   @@index([leadId])
   @@index([agentName])
   @@index([status])
+}
+
+/// A single "Scope Market" discovery run - searches Google Places for SMBs in a
+/// city/category, imports weak-site leads, and tracks the background pipeline phase.
+model DiscoveryRun {
+  id String @id @default(cuid())
+
+  workflowRunId String      @unique
+  workflowRun   WorkflowRun @relation(fields: [workflowRunId], references: [id], onDelete: Cascade)
+
+  city        String
+  country     String?
+  industries  String[]
+  targetCount Int
+
+  status DiscoveryRunStatus @default(discovering)
+
+  /// Lead ids created by this run - drives the background pipeline phase and progress display.
+  leadIds           String[]
+  placesFound       Int      @default(0)
+  imported          Int      @default(0)
+  skippedDuplicate  Int      @default(0)
+  skippedSuppressed Int      @default(0)
+
+  dedicatedSalesCount Int @default(0)
+  prospectsCount      Int @default(0)
+
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([createdAt])
 }

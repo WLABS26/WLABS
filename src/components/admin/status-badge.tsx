@@ -22,6 +22,7 @@ const LEAD_STATUS_VARIANTS: Record<LeadStatus, BadgeVariant> = {
   high_opportunity: "success",
   medium_opportunity: "warning",
   low_opportunity: "outline",
+  dedicated_sales: "warning",
   preview_generated: "brand",
   preview_qc_passed: "success",
   preview_needs_review: "warning",

@@ -74,6 +74,13 @@ export interface CsvLeadRecord {
   city?: string;
   country?: string;
   notes?: string;
+  /** Defaults to "csv_import" when omitted. */
+  source?: string;
+  sourceUrl?: string;
+  /** Google Places place_id - dedup key for re-discovered leads (Scope Market). */
+  discoverySourceId?: string;
+  /** IndustryKey searched when this lead was discovered (Scope Market). */
+  discoveryCategory?: string;
 }
 
 const COLUMN_ALIASES: Record<string, keyof CsvLeadRecord> = {
@@ -192,6 +199,7 @@ export async function importLeadsFromCsv(records: CsvLeadRecord[]): Promise<CsvI
       const dedupeConditions: Prisma.LeadWhereInput[] = [];
       if (websiteUrl) dedupeConditions.push({ websiteUrl });
       if (contactEmail) dedupeConditions.push({ contactEmail });
+      if (record.discoverySourceId) dedupeConditions.push({ discoverySourceId: record.discoverySourceId });
 
       const existing =
         dedupeConditions.length > 0 ? await prisma.lead.findFirst({ where: { OR: dedupeConditions } }) : null;
@@ -223,12 +231,19 @@ export async function importLeadsFromCsv(records: CsvLeadRecord[]): Promise<CsvI
           city: record.city?.trim() || null,
           country: record.country?.trim() || null,
           notes: record.notes?.trim() || null,
-          source: "csv_import",
+          source: record.source ?? "csv_import",
+          sourceUrl: record.sourceUrl ?? null,
+          discoverySourceId: record.discoverySourceId ?? null,
+          discoveryCategory: record.discoveryCategory ?? null,
           status: "imported",
         },
       });
 
-      await logActivity(lead.id, "lead_imported", "Lead imported from CSV.");
+      await logActivity(
+        lead.id,
+        "lead_imported",
+        record.source === "google_places_discovery" ? "Lead discovered via Google Places (Scope Market)." : "Lead imported from CSV.",
+      );
 
       created++;
       rows.push({ row: rowNumber, businessName, status: "created", leadId: lead.id, slug: lead.slug });

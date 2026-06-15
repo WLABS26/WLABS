@@ -176,6 +176,9 @@ export async function runLeadPipeline(leadId: string, options: { createdBy?: str
       salesAngle: a.salesAngle,
       urgencyReason: a.urgencyReason,
       redesignPotential: a.redesignPotential,
+      criticalFindingsJson: a.criticalFindings,
+      bestPracticeComparison: a.bestPracticeComparison,
+      benchmarkGap: a.benchmarkGap,
       qualificationStatus: a.qualificationStatus,
     },
   });

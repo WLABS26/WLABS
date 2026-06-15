@@ -284,7 +284,9 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
               const categoryScores = (audit.categoryScoresJson ?? {}) as Record<string, number>;
               const topIssues = (audit.topIssuesJson ?? []) as string[];
               const quickWins = (audit.quickWinsJson ?? []) as string[];
+              const criticalFindings = (audit.criticalFindingsJson ?? []) as string[];
               return (
+                <>
                 <Card>
                   <CardHeader>
                     <CardTitle>Website audit</CardTitle>
@@ -348,6 +350,36 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                     )}
                   </CardContent>
                 </Card>
+
+                {(criticalFindings.length > 0 || audit.bestPracticeComparison || audit.benchmarkGap) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Critical findings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {criticalFindings.length > 0 && (
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-white">
+                          {criticalFindings.map((finding) => (
+                            <li key={finding}>{finding}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {audit.bestPracticeComparison && (
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Vs. best practice</p>
+                          <p className="text-sm text-white">{audit.bestPracticeComparison}</p>
+                        </div>
+                      )}
+                      {audit.benchmarkGap && (
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Benchmark gap</p>
+                          <p className="text-sm text-white">{audit.benchmarkGap}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+                </>
               );
             })()}
 

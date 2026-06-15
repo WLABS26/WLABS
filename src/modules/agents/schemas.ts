@@ -30,6 +30,7 @@ export const extractedWebsiteDataSchema = z.object({
   hasPhone: z.boolean(),
   hasEmail: z.boolean(),
   hasMapEmbed: z.boolean(),
+  hasPlaceholderContent: z.boolean(),
 });
 
 export const categoryScoresSchema = z.object({
@@ -51,5 +52,8 @@ export const auditResultSchema = z.object({
   salesAngle: z.string(),
   urgencyReason: z.string(),
   redesignPotential: z.string(),
+  criticalFindings: z.array(z.string()),
+  bestPracticeComparison: z.string(),
+  benchmarkGap: z.string(),
   qualificationStatus: z.enum(["high_opportunity", "medium_opportunity", "low_opportunity", "reject"]),
 });

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Eye, Inbox, LayoutDashboard, LogOut, Mail, Menu, Users, Workflow } from "lucide-react";
+import { BarChart3, Compass, Eye, Inbox, LayoutDashboard, LogOut, Mail, Menu, Users, Workflow } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/layout/logo";
@@ -14,6 +14,7 @@ import { logoutAction } from "@/app/admin/login/actions";
 const ADMIN_NAV_LINKS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Leads", href: "/admin/leads", icon: Users },
+  { label: "Discovery", href: "/admin/discovery", icon: Compass },
   { label: "Previews", href: "/admin/previews", icon: Eye },
   { label: "Emails", href: "/admin/emails", icon: Mail },
   { label: "Review queue", href: "/admin/review", icon: Inbox },

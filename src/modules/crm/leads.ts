@@ -12,6 +12,7 @@ export interface ListLeadsFilters {
   search?: string;
   page?: number;
   pageSize?: number;
+  orderBy?: Prisma.LeadOrderByWithRelationInput;
 }
 
 export interface ListLeadsResult {
@@ -54,7 +55,7 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<ListLea
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: filters.orderBy ?? { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
