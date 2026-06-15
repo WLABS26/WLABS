@@ -7,7 +7,7 @@ import { logActivity } from "@/modules/crm/activity";
 const DEFAULT_PAGE_SIZE = 20;
 
 export interface ListLeadsFilters {
-  status?: LeadStatus;
+  status?: LeadStatus | LeadStatus[];
   industry?: string;
   search?: string;
   page?: number;
@@ -34,7 +34,7 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<ListLea
   const where: Prisma.LeadWhereInput = {};
 
   if (filters.status) {
-    where.status = filters.status;
+    where.status = Array.isArray(filters.status) ? { in: filters.status } : filters.status;
   }
 
   if (filters.industry) {
@@ -92,6 +92,13 @@ export type LeadDetail = NonNullable<Awaited<ReturnType<typeof getLeadBySlug>>>;
 export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   const lead = await prisma.lead.update({ where: { id: leadId }, data: { status } });
   await logActivity(leadId, "status_changed", `Status changed to "${status.replace(/_/g, " ")}".`, { status });
+  return lead;
+}
+
+/** Requeue a rejected lead for re-review by moving it back to "qualified". */
+export async function requeueRejectedLead(leadId: string) {
+  const lead = await prisma.lead.update({ where: { id: leadId }, data: { status: "qualified" } });
+  await logActivity(leadId, "lead_unrejected", "Lead requeued for re-review after being rejected.", { status: "qualified" });
   return lead;
 }
 

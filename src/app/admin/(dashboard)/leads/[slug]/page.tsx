@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, Mail, MapPin, Phone, User, Workflow } from "lucide-react";
+import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, Mail, MapPin, Phone, RotateCcw, User, Workflow } from "lucide-react";
 
 import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge } from "@/components/admin/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import {
   approveEmailAction,
   approvePreviewAction,
   rejectEmailAction,
+  requeueLeadAction,
   runPreviewQcAction,
   suppressLeadAction,
 } from "../../actions";
@@ -164,6 +165,16 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <LeadStatusForm leadId={lead.id} slug={lead.slug} status={lead.status} />
+              {lead.status === "rejected" && (
+                <form action={requeueLeadAction} className="border-t border-white/10 pt-3">
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <input type="hidden" name="slug" value={lead.slug} />
+                  <Button type="submit" size="sm" variant="ghost" className="w-full text-brand-cyan">
+                    <RotateCcw className="size-4" />
+                    Queue for re-review
+                  </Button>
+                </form>
+              )}
               {!lead.doNotContact && lead.status !== "suppressed" && (
                 <form action={suppressLeadAction} className="border-t border-white/10 pt-3">
                   <input type="hidden" name="leadId" value={lead.id} />

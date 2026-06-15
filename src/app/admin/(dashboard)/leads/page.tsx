@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Upload } from "lucide-react";
+import { Plus, RotateCcw, Upload } from "lucide-react";
 
 import { LeadFilters } from "@/components/admin/lead-filters";
 import { AdminPagination } from "@/components/admin/pagination";
@@ -13,6 +13,7 @@ import { listLeads } from "@/modules/crm/leads";
 import { INDUSTRIES } from "@/modules/shared/constants";
 import { LEAD_STATUSES, type LeadStatus } from "@/modules/shared/types";
 
+import { requeueLeadAction } from "../actions";
 import { DeleteLeadButton } from "./delete-lead-button";
 
 export const metadata: Metadata = {
@@ -21,8 +22,11 @@ export const metadata: Metadata = {
 
 const INDUSTRY_LABELS = new Map<string, string>(INDUSTRIES.map((industry) => [industry.value, industry.label]));
 
-function parseLeadStatus(value: string | undefined): LeadStatus | undefined {
-  return value && (LEAD_STATUSES as readonly string[]).includes(value) ? (value as LeadStatus) : undefined;
+/** Parse a (possibly comma-separated, e.g. from a dashboard funnel link) status filter. */
+function parseLeadStatusFilter(value: string | undefined): LeadStatus[] | undefined {
+  if (!value) return undefined;
+  const statuses = value.split(",").filter((part): part is LeadStatus => (LEAD_STATUSES as readonly string[]).includes(part));
+  return statuses.length > 0 ? statuses : undefined;
 }
 
 interface AdminLeadsPageProps {
@@ -31,7 +35,8 @@ interface AdminLeadsPageProps {
 
 export default async function AdminLeadsPage({ searchParams }: AdminLeadsPageProps) {
   const params = await searchParams;
-  const status = parseLeadStatus(params.status);
+  const statusParam = params.status || undefined;
+  const status = parseLeadStatusFilter(statusParam);
   const industry = params.industry || undefined;
   const search = params.search || undefined;
   const page = params.page ? Number(params.page) || 1 : 1;
@@ -63,7 +68,7 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
         </div>
       </div>
 
-      <LeadFilters status={status} industry={industry} search={search} />
+      <LeadFilters status={statusParam} industry={industry} search={search} />
 
       <Card>
         <CardContent className="space-y-4">
@@ -101,7 +106,24 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
                     </TableCell>
                     <TableCell className="text-muted">{formatDateTime(lead.createdAt)}</TableCell>
                     <TableCell className="text-right">
-                      <DeleteLeadButton leadId={lead.id} businessName={lead.businessName} />
+                      <div className="flex items-center justify-end gap-1">
+                        {lead.status === "rejected" && (
+                          <form action={requeueLeadAction}>
+                            <input type="hidden" name="leadId" value={lead.id} />
+                            <Button
+                              type="submit"
+                              size="icon"
+                              variant="ghost"
+                              aria-label={`Queue ${lead.businessName} for re-review`}
+                              title="Queue for re-review"
+                              className="text-muted hover:text-brand-cyan"
+                            >
+                              <RotateCcw className="size-4" />
+                            </Button>
+                          </form>
+                        )}
+                        <DeleteLeadButton leadId={lead.id} businessName={lead.businessName} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -109,7 +131,7 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
             </Table>
           )}
 
-          <AdminPagination page={page} totalPages={totalPages} basePath="/admin/leads" searchParams={{ status, industry, search }} />
+          <AdminPagination page={page} totalPages={totalPages} basePath="/admin/leads" searchParams={{ status: statusParam, industry, search }} />
         </CardContent>
       </Card>
     </div>

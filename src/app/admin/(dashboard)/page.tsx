@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Flame, Inbox, Users, Workflow } from "lucide-react";
+import { ChevronRight, Flame, Inbox, Users, Workflow } from "lucide-react";
 
 import { InboundRequestStatusBadge, LeadStatusBadge } from "@/components/admin/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +48,33 @@ export default async function AdminDashboardPage() {
           </Link>
         ))}
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <CardTitle>Pipeline funnel</CardTitle>
+          {stats.rejectedLeads > 0 && (
+            <Link href="/admin/leads?status=rejected" className="text-xs font-medium text-red-400 hover:underline">
+              {stats.rejectedLeads} rejected lead{stats.rejectedLeads === 1 ? "" : "s"} awaiting follow-up →
+            </Link>
+          )}
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-stretch gap-2 overflow-x-auto pb-1">
+            {stats.funnel.map((stage, index) => (
+              <div key={stage.key} className="flex items-center gap-2">
+                <Link
+                  href={`/admin/leads?status=${stage.statuses.join(",")}`}
+                  className="flex min-w-[110px] flex-col items-center justify-center rounded-xl border border-white/10 px-4 py-3 text-center transition-colors hover:border-white/20 hover:bg-white/5"
+                >
+                  <span className="text-2xl font-bold text-white">{stage.count}</span>
+                  <span className="mt-1 text-xs text-muted">{stage.label}</span>
+                </Link>
+                {index < stats.funnel.length - 1 && <ChevronRight className="size-4 shrink-0 text-muted" />}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
