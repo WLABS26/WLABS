@@ -31,6 +31,8 @@ export const extractedWebsiteDataSchema = z.object({
   hasEmail: z.boolean(),
   hasMapEmbed: z.boolean(),
   hasPlaceholderContent: z.boolean(),
+  contactPerson: z.string().nullable(),
+  imprintUrl: z.string().nullable(),
 });
 
 export const categoryScoresSchema = z.object({

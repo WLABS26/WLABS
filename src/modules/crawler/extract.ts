@@ -32,6 +32,10 @@ export interface ExtractedWebsiteData {
   hasMapEmbed: boolean;
   /** Site still contains unedited template/placeholder copy or phone numbers. */
   hasPlaceholderContent: boolean;
+  /** Name of the responsible person/owner found on this page (Geschäftsführer, Inhaber, Vertreten durch, etc.), if any. */
+  contactPerson: string | null;
+  /** Absolute URL of a separate Impressum/legal-notice page linked from this page, if found. */
+  imprintUrl: string | null;
 }
 
 const SOCIAL_DOMAINS = ["facebook.com", "instagram.com", "twitter.com", "x.com", "linkedin.com", "youtube.com", "tiktok.com"];
@@ -51,6 +55,36 @@ const PLACEHOLDER_PATTERNS: RegExp[] = [
   /insert (your )?(text|content|tagline|description) here/i,
   /\b(123[\s.-]?456[\s.-]?7890|555[\s.-]?555[\s.-]?5555|000[\s.-]?000[\s.-]?0000|123[\s.-]?123[\s.-]?1234)\b/,
 ];
+
+/** Link text/href patterns for an Impressum / legal-notice page (DACH + generic English/French/Italian). */
+const IMPRINT_LINK_PATTERNS: RegExp[] = [
+  /impressum/i,
+  /imprint/i,
+  /legal\s*notice/i,
+  /mentions?\s*l[ée]gales?/i,
+  /note\s*legali/i,
+];
+
+/** A capitalized name, e.g. "Jürgen Müller-Schmidt" - up to 4 words, allows German umlauts/ß. */
+const NAME_PATTERN = "[A-ZÄÖÜ][\\wäöüß.'-]*(?:\\s+[A-ZÄÖÜ][\\wäöüß.'-]*){0,3}";
+
+/**
+ * "Responsible person" labels commonly found on Impressum/legal-notice pages
+ * (DACH + generic English). Anchored to the start of a line and capture the
+ * remainder, since the actual name follows on the same line as the label but
+ * the next line often starts with another uppercase-led label (e.g.
+ * "E-Mail: ...") that a flattened-text match could otherwise spill into.
+ */
+const CONTACT_PERSON_LINE_PATTERNS: RegExp[] = [
+  /^(?:Geschäftsführer(?:in)?|Geschaeftsfuehrer(?:in)?|Inhaber(?:in)?|Vertreten durch|Vertretungsberechtigte[rn]?)\s*[:\-]?\s*(.+)$/i,
+  // Allows the common "...nach § 55 Abs. 2 RStV:" clause between the label and the name.
+  /^Verantwortlich(?:er)? für den Inhalt[^:]{0,40}[:\-]?\s*(.+)$/i,
+  /^Responsible for (?:this )?content[^:]{0,40}[:\-]?\s*(.+)$/i,
+  /^(?:Owner|Managing Director|Represented by|CEO)\s*[:\-]?\s*(.+)$/i,
+];
+
+/** Matches a name at the start of a string, e.g. "Max Mustermann" in "Max Mustermann, Tel: ...". */
+const NAME_AT_START = new RegExp(`^${NAME_PATTERN}`);
 
 function decodeEntities(input: string): string {
   return input
@@ -81,6 +115,108 @@ function stripNonContent(html: string): string {
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<!--[\s\S]*?-->/g, " ");
+}
+
+/**
+ * Split HTML into cleaned, non-empty lines of text, breaking on block-level
+ * boundaries (paragraphs, list items, table cells/rows, headings, <br>).
+ * Used where line boundaries matter - e.g. an Impressum label like
+ * "Geschäftsführer: Max Mustermann" must not run on into the next line's
+ * "E-Mail: ..." the way a fully-flattened single-string match would.
+ */
+function splitIntoLines(rawHtml: string): string[] {
+  return stripNonContent(rawHtml)
+    .replace(/<(br|\/p|\/div|\/li|\/td|\/tr|\/h[1-6])\b[^>]*>/gi, "\n")
+    .split("\n")
+    .map((line) => clean(line))
+    .filter(Boolean);
+}
+
+/**
+ * Find a link to the site's Impressum/legal-notice page, if any. Checks both
+ * the link text and href/slug, since some sites label the link with an icon
+ * or a translated phrase but keep "impressum" in the URL. Same-page anchors
+ * (e.g. `#impressum`) are ignored - that content is already captured by the
+ * homepage scan. Returns an absolute URL, or null if none is found.
+ */
+export function findImprintUrl(rawHtml: string, baseUrl: string): string | null {
+  const matchesPattern = (value: string) => IMPRINT_LINK_PATTERNS.some((re) => re.test(value));
+
+  for (const anchor of matchAll(rawHtml, /<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    const hrefMatch = anchor[1].match(/href=["']([^"']*)["']/i);
+    if (!hrefMatch) continue;
+
+    const href = decodeEntities(hrefMatch[1]).trim();
+    if (!href || href.startsWith("#") || /^(mailto|tel|javascript):/i.test(href)) continue;
+
+    const text = clean(anchor[2]);
+    if (!matchesPattern(text) && !matchesPattern(href)) continue;
+
+    try {
+      const resolved = new URL(href, baseUrl);
+      if (resolved.href.split("#")[0] === baseUrl.split("#")[0]) continue;
+      return resolved.href;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Try to pull a name out of a line that starts with a "responsible person"
+ * label, e.g. "Geschäftsführer: Max Mustermann". Recurses once on the
+ * remainder so chained labels (e.g. "Vertretungsberechtigter
+ * Geschäftsführer: Max Mustermann") resolve to the name rather than the
+ * inner label.
+ */
+function extractNameFromLabelledLine(line: string, depth = 0): string | null {
+  if (depth > 2) return null;
+
+  for (const pattern of CONTACT_PERSON_LINE_PATTERNS) {
+    const rest = line.match(pattern)?.[1]?.trim();
+    if (!rest) continue;
+
+    const nested = extractNameFromLabelledLine(rest, depth + 1);
+    if (nested) return nested;
+
+    const name = rest.split(/[,|]/)[0]?.trim().match(NAME_AT_START)?.[0];
+    if (name && name.length >= 3 && name.length <= 60 && !/\d/.test(name)) {
+      return name;
+    }
+  }
+
+  return null;
+}
+
+/** Extract the "responsible person" name from an Impressum/legal-notice page (Geschäftsführer, Inhaber, Vertreten durch, etc.). */
+export function extractContactPerson(rawHtml: string): string | null {
+  for (const line of splitIntoLines(rawHtml)) {
+    const name = extractNameFromLabelledLine(line);
+    if (name) return name;
+  }
+
+  return null;
+}
+
+/**
+ * Merge contact details found on a separate Impressum/legal-notice page into
+ * the homepage's extracted data. Impressum-page emails/phones/contact person
+ * take priority over the homepage's - in DACH countries the Impressum is the
+ * legally-authoritative source for contact details.
+ */
+export function mergeImprintData(homepage: ExtractedWebsiteData, imprint: ExtractedWebsiteData, imprintUrl: string): ExtractedWebsiteData {
+  return {
+    ...homepage,
+    emails: unique([...imprint.emails, ...homepage.emails]).slice(0, 10),
+    phones: unique([...imprint.phones, ...homepage.phones]).slice(0, 8),
+    addressHints: unique([...imprint.addressHints, ...homepage.addressHints]).slice(0, 5),
+    hasEmail: homepage.hasEmail || imprint.hasEmail,
+    hasPhone: homepage.hasPhone || imprint.hasPhone,
+    contactPerson: imprint.contactPerson ?? homepage.contactPerson,
+    imprintUrl,
+  };
 }
 
 export function extractWebsiteData(rawHtml: string, finalUrl: string): ExtractedWebsiteData {
@@ -149,6 +285,9 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
   const linksCount = matchAll(html, /<a\b/gi).length;
   const wordCount = clean(html).split(/\s+/).filter(Boolean).length;
 
+  const contactPerson = extractContactPerson(rawHtml);
+  const imprintUrl = findImprintUrl(rawHtml, finalUrl);
+
   return {
     title,
     metaDescription,
@@ -173,5 +312,7 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
     hasEmail: emails.length > 0,
     hasMapEmbed: lower.includes("google.com/maps") || lower.includes("maps.googleapis.com") || lower.includes("openstreetmap"),
     hasPlaceholderContent: PLACEHOLDER_PATTERNS.some((re) => re.test(rawHtml)),
+    contactPerson,
+    imprintUrl,
   };
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { VariantProps } from "class-variance-authority";
-import { ArrowRight } from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 
 import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { formatDateTime } from "@/lib/utils";
 import type { DiscoveryRunStatus } from "@/generated/prisma/client";
 import { listLeads } from "@/modules/crm/leads";
 import { getDiscoveredTodayCount, listDiscoveryRuns } from "@/modules/discovery/discovery-runs";
+import { isPlacesApiConfigured } from "@/modules/discovery/places-client";
 import { INDUSTRIES } from "@/modules/shared/constants";
 
 import { ScopeMarketForm } from "./scope-market-form";
@@ -40,6 +41,7 @@ export default async function AdminDiscoveryPage() {
   ]);
 
   const remaining = Math.max(0, DAILY_CAP - discoveredToday);
+  const placesConfigured = isPlacesApiConfigured();
 
   return (
     <div className="space-y-6">
@@ -50,6 +52,21 @@ export default async function AdminDiscoveryPage() {
           pipeline. Strong sites are routed to dedicated sales.
         </p>
       </div>
+
+      {!placesConfigured && (
+        <div className="flex gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="font-medium">Demo mode — results are sample data, not real businesses</p>
+            <p className="mt-1 text-amber-200/80">
+              <code className="rounded bg-black/20 px-1 py-0.5 text-xs">GOOGLE_PLACES_API_KEY</code> is not set, so
+              Scope Market returns placeholder places instead of real Google results. Add the key in your hosting
+              provider&apos;s environment variables (Google Cloud Console → enable &quot;Places API (New)&quot; →
+              create an API key) to discover real prospects.
+            </p>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>

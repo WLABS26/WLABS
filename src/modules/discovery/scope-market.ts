@@ -72,7 +72,11 @@ export async function runScopeMarketDiscovery(options: ScopeMarketOptions): Prom
     let collected = 0;
 
     for (let page = 0; page < MAX_PAGES_PER_INDUSTRY; page++) {
-      const result = await runAgentStep(placesDiscoveryAgent, { city: options.city, industry, pageToken }, stepCtx);
+      const result = await runAgentStep(
+        placesDiscoveryAgent,
+        { city: options.city, country: options.country, industry, pageToken },
+        stepCtx,
+      );
       if (result.status !== "completed" || !result.output) break;
 
       for (const place of result.output.places) {

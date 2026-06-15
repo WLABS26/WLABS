@@ -11,7 +11,7 @@ import { Agent, NonRetryableError } from "@/modules/agents/base-agent";
 import { INDUSTRIES } from "@/modules/shared/constants";
 import type { IndustryKey } from "@/modules/shared/types";
 
-import { buildSearchQuery } from "./categories";
+import { buildSearchQuery, resolveLanguageCode, resolveRegionCode } from "./categories";
 import { PlacesApiError, searchPlacesByText } from "./places-client";
 import { placeSearchResultSchema } from "./types";
 
@@ -19,6 +19,7 @@ const INDUSTRY_VALUES = INDUSTRIES.map((industry) => industry.value) as [Industr
 
 const inputSchema = z.object({
   city: z.string().min(1),
+  country: z.string().optional(),
   industry: z.enum(INDUSTRY_VALUES),
   pageToken: z.string().optional(),
 });
@@ -38,10 +39,12 @@ export class PlacesDiscoveryAgent extends Agent<PlacesDiscoveryInput, PlacesDisc
   readonly outputSchema = outputSchema;
 
   protected async execute(input: PlacesDiscoveryInput): Promise<PlacesDiscoveryOutput> {
-    const query = buildSearchQuery(input.city, input.industry);
+    const query = buildSearchQuery(input.city, input.industry, input.country);
+    const regionCode = resolveRegionCode(input.country);
+    const languageCode = resolveLanguageCode(regionCode);
 
     try {
-      const page = await searchPlacesByText({ query, pageToken: input.pageToken });
+      const page = await searchPlacesByText({ query, pageToken: input.pageToken, regionCode, languageCode });
       return { places: page.places, nextPageToken: page.nextPageToken };
     } catch (err) {
       if (err instanceof PlacesApiError) {

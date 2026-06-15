@@ -11,7 +11,7 @@
  */
 import { z } from "zod";
 
-import { extractWebsiteData } from "@/modules/crawler/extract";
+import { extractWebsiteData, mergeImprintData } from "@/modules/crawler/extract";
 import { fetchHomepage } from "@/modules/crawler/fetch";
 import { Agent, NonRetryableError } from "./base-agent";
 import { extractedWebsiteDataSchema } from "./schemas";
@@ -45,13 +45,30 @@ export class WebsiteCrawlAgent extends Agent<WebsiteCrawlInput, WebsiteCrawlOutp
 
     if (result.ok) {
       ctx.log("info", `Fetched ${result.finalUrl} (${result.html.length} bytes)`);
+      let data = extractWebsiteData(result.html, result.finalUrl);
+
+      // Best-effort: follow a linked Impressum/legal-notice page for contact
+      // details (legally required in DACH countries). Failures here must
+      // never fail the overall crawl - the homepage already succeeded.
+      if (data.imprintUrl && data.imprintUrl !== result.finalUrl) {
+        try {
+          const imprint = await fetchHomepage(data.imprintUrl, { timeoutMs: input.timeoutMs });
+          if (imprint.ok) {
+            data = mergeImprintData(data, extractWebsiteData(imprint.html, imprint.finalUrl), imprint.finalUrl);
+            ctx.log("info", `Found Impressum at ${imprint.finalUrl}`);
+          }
+        } catch {
+          // Impressum fetch is best-effort.
+        }
+      }
+
       return {
         crawlStatus: "success",
         finalUrl: result.finalUrl,
         https: result.https,
         errorMessage: null,
         screenshotsAvailable: false,
-        extractedData: extractWebsiteData(result.html, result.finalUrl),
+        extractedData: data,
       };
     }
 

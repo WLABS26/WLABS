@@ -22,13 +22,23 @@ export function ScopeMarketForm({ defaultTarget, remaining }: { defaultTarget: n
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="city">City</Label>
-          <Input id="city" name="city" placeholder="e.g. Lisbon" required />
+          <Input id="city" name="city" placeholder="e.g. Berlin" required />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="country">Country (optional)</Label>
-          <Input id="country" name="country" placeholder="e.g. Portugal" />
+          <Label htmlFor="country">Country</Label>
+          <Input id="country" name="country" placeholder="e.g. Germany" defaultValue="Germany" list="scope-market-countries" />
+          <datalist id="scope-market-countries">
+            <option value="Germany" />
+            <option value="Austria" />
+            <option value="Switzerland" />
+          </datalist>
         </div>
       </div>
+      <p className="text-xs text-muted">
+        Tuned for the DACH region (Germany, Austria, Switzerland) — businesses there are legally required to publish
+        an Impressum/legal-notice page, which the crawler reads to fill in contact email and contact person. Other
+        countries work too, but contact details will rely on Google Places alone.
+      </p>
 
       <div className="space-y-1.5">
         <Label>Categories</Label>

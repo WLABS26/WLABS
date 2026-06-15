@@ -71,8 +71,18 @@ function apiKey(): string | undefined {
   return process.env.GOOGLE_PLACES_API_KEY || undefined;
 }
 
-/** Search for places by free-text query (e.g. "dentist in Berlin"). One page per call. */
-export async function searchPlacesByText(options: { query: string; pageToken?: string }): Promise<PlacesSearchPage> {
+/** Whether a real Google Places API key is configured. False means Scope Market returns deterministic mock/demo places. */
+export function isPlacesApiConfigured(): boolean {
+  return Boolean(apiKey());
+}
+
+/** Search for places by free-text query (e.g. "dentist in Berlin, Germany"). One page per call. */
+export async function searchPlacesByText(options: {
+  query: string;
+  pageToken?: string;
+  languageCode?: string;
+  regionCode?: string;
+}): Promise<PlacesSearchPage> {
   const key = apiKey();
   if (!key) return mockSearchPlacesByText(options);
 
@@ -83,7 +93,12 @@ export async function searchPlacesByText(options: { query: string; pageToken?: s
       "X-Goog-Api-Key": key,
       "X-Goog-FieldMask": SEARCH_FIELD_MASK,
     },
-    body: JSON.stringify({ textQuery: options.query, pageToken: options.pageToken }),
+    body: JSON.stringify({
+      textQuery: options.query,
+      pageToken: options.pageToken,
+      languageCode: options.languageCode,
+      regionCode: options.regionCode,
+    }),
   });
 
   if (!res.ok) {
@@ -129,8 +144,20 @@ function titleCaseMock(value: string): string {
   return value.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** Country-code phone prefixes for DACH regionCodes, so mock results match the searched region. Falls back to a US prefix. */
+const MOCK_PHONE_PREFIXES: Record<string, string> = {
+  DE: "+49 30",
+  AT: "+43 1",
+  CH: "+41 44",
+};
+
+function mockPhone(regionCode: string | undefined, line: string): string {
+  const prefix = (regionCode && MOCK_PHONE_PREFIXES[regionCode]) || "+1 555";
+  return `${prefix} ${line}`;
+}
+
 /** First page of mock results for a query: a mix of places with/without a website or phone. */
-function mockPage1(query: string): PlaceSearchResult[] {
+function mockPage1(query: string, regionCode?: string): PlaceSearchResult[] {
   const slug = slugifyMock(query);
   const label = titleCaseMock(query);
   return [
@@ -141,7 +168,7 @@ function mockPage1(query: string): PlaceSearchResult[] {
       types: ["establishment"],
       businessStatus: "OPERATIONAL",
       websiteUrl: `https://${slug}-studio.example.com`,
-      phone: "+1 555-010-0001",
+      phone: mockPhone(regionCode, "010-0001"),
       city: null,
       country: null,
     },
@@ -152,7 +179,7 @@ function mockPage1(query: string): PlaceSearchResult[] {
       types: ["establishment"],
       businessStatus: "OPERATIONAL",
       websiteUrl: `https://${slug}-group.example.com`,
-      phone: "+1 555-010-0002",
+      phone: mockPhone(regionCode, "010-0002"),
       city: null,
       country: null,
     },
@@ -163,7 +190,7 @@ function mockPage1(query: string): PlaceSearchResult[] {
       types: ["establishment"],
       businessStatus: "OPERATIONAL",
       websiteUrl: null,
-      phone: "+1 555-010-0003",
+      phone: mockPhone(regionCode, "010-0003"),
       city: null,
       country: null,
     },
@@ -182,7 +209,7 @@ function mockPage1(query: string): PlaceSearchResult[] {
 }
 
 /** Second page of mock results - returned when a (mock) page token is supplied. */
-function mockPage2(query: string): PlaceSearchResult[] {
+function mockPage2(query: string, regionCode?: string): PlaceSearchResult[] {
   const slug = slugifyMock(query);
   const label = titleCaseMock(query);
   return [
@@ -193,7 +220,7 @@ function mockPage2(query: string): PlaceSearchResult[] {
       types: ["establishment"],
       businessStatus: "OPERATIONAL",
       websiteUrl: `https://${slug}-partners.example.com`,
-      phone: "+1 555-010-0005",
+      phone: mockPhone(regionCode, "010-0005"),
       city: null,
       country: null,
     },
@@ -211,11 +238,14 @@ function mockPage2(query: string): PlaceSearchResult[] {
   ];
 }
 
-function mockSearchPlacesByText(options: { query: string; pageToken?: string }): PlacesSearchPage {
+function mockSearchPlacesByText(options: { query: string; pageToken?: string; regionCode?: string }): PlacesSearchPage {
   if (!options.pageToken) {
-    return { places: mockPage1(options.query), nextPageToken: `mock-${slugifyMock(options.query)}-page2` };
+    return {
+      places: mockPage1(options.query, options.regionCode),
+      nextPageToken: `mock-${slugifyMock(options.query)}-page2`,
+    };
   }
-  return { places: mockPage2(options.query), nextPageToken: null };
+  return { places: mockPage2(options.query, options.regionCode), nextPageToken: null };
 }
 
 function mockGetPlaceDetails(placeId: string): PlaceSearchResult {

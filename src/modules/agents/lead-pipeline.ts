@@ -143,8 +143,36 @@ export async function runLeadPipeline(leadId: string, options: { createdBy?: str
       extractedDataJson: data as unknown as Prisma.InputJsonValue,
     },
   });
-  await prisma.lead.update({ where: { id: leadId }, data: { status: "crawled" } });
+  // Backfill missing contact details from the crawl (homepage and/or
+  // Impressum page) - discovery-sourced leads in particular often arrive
+  // with no email, since Google Places never returns one.
+  const leadUpdate: Prisma.LeadUpdateInput = { status: "crawled" };
+  const enrichedFields: Record<string, string> = {};
+
+  if (!lead.contactEmail && data.emails[0]) {
+    leadUpdate.contactEmail = data.emails[0];
+    enrichedFields.contactEmail = data.emails[0];
+  }
+  if (!lead.contactPhone && data.phones[0]) {
+    leadUpdate.contactPhone = data.phones[0];
+    enrichedFields.contactPhone = data.phones[0];
+  }
+  if (!lead.contactPerson && data.contactPerson) {
+    leadUpdate.contactPerson = data.contactPerson;
+    enrichedFields.contactPerson = data.contactPerson;
+  }
+
+  await prisma.lead.update({ where: { id: leadId }, data: leadUpdate });
   await logActivity(leadId, "crawl_completed", `Crawled ${crawl.output.finalUrl}.`);
+
+  if (Object.keys(enrichedFields).length > 0) {
+    await logActivity(
+      leadId,
+      "contact_enriched",
+      `Found contact details via crawl${data.imprintUrl ? " (Impressum)" : ""} and added them to the lead.`,
+      enrichedFields,
+    );
+  }
 
   // ---- Step 3: Audit ----
   const audit = await runAgentStep(
