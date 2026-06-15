@@ -13,10 +13,14 @@
    `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`,
    `NEXT_PUBLIC_APP_URL` (your production URL).
 4. The build runs `prisma generate` automatically (postinstall). Apply the
-   schema once against the production database:
+   committed migrations once against the production database:
    ```bash
-   npm run db:push        # or: npx prisma migrate deploy
+   npm run db:migrate:deploy
    ```
+   (`npm run db:push` also works for quick prototyping, but production
+   deployments should use migrations.) No terminal? See
+   [Step 4 of the Launch guide](./launch-guide.md#step-4--create-the-database-tables-one-time)
+   for a click-through version.
 5. Deploy. The marketing site is static; admin and preview routes are dynamic.
 
 ## Preview hosting

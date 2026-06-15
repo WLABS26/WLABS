@@ -1,7 +1,8 @@
 // WLABS - Website Laboratory
 // Prisma schema - PostgreSQL
 // Run `npx prisma generate` after any change (also runs automatically via postinstall).
-// Run `npx prisma migrate dev --name <name>` to create/apply a migration once DATABASE_URL is configured.
+// Run `npx prisma migrate dev --name <name>` to create a new migration during development.
+// Run `npx prisma migrate deploy` (or `npm run db:migrate:deploy`) to apply migrations in production.
 
 generator client {
   provider = "prisma-client"

@@ -52,8 +52,11 @@ tab open — you'll copy three values from it in the next step.
 1. Go to [vercel.com](https://vercel.com) and sign up / log in with GitHub.
 2. Click **Add New → Project**, then **Import** the `wlabs26/wlabs`
    repository.
-3. Before clicking **Deploy**, open the **Environment Variables** section
-   and add:
+3. Before clicking **Deploy**, find the **Environment Variables** section —
+   it's below the Build/Output/Install Command settings, and may be
+   collapsed (click it to expand). For each row below, type the **Name**
+   into the "Key" box and the value into the box next to it, then click
+   **Add More** to add a row for the next one:
 
    | Name | Value |
    |---|---|
@@ -73,17 +76,32 @@ tab open — you'll copy three values from it in the next step.
 The database starts out empty — its tables need to be created once. Without
 opening a terminal:
 
-1. In your Vercel project, go to **Settings → Build & Deployment**.
+1. In your Vercel project, go to **Settings → Build and Deployment**.
 2. Temporarily change the **Build Command** to:
    ```
-   npx prisma db push --skip-generate && npm run build
+   npx prisma migrate deploy && npm run build
    ```
-3. Go to **Deployments**, open the latest one, and choose **Redeploy**.
-4. Once it finishes successfully, go back to **Build & Deployment** and clear
-   the override so future deploys go back to the default build command.
+3. Go to **Deployments**, open the latest one, and choose **Redeploy**. If
+   you're asked about the build cache, choose to redeploy **without** the
+   existing cache.
+4. Once it finishes successfully, go back to **Build and Deployment** and
+   clear the Build Command override so future deploys go back to the default
+   (`npm run build`).
 
-_(If you're comfortable with a terminal, this is just `npm run db:push` —
+_(If you're comfortable with a terminal, this is just `npm run db:migrate:deploy` —
 see [setup.md](./setup.md).)_
+
+**If the build fails:** open the failed deployment, expand **Build Logs**,
+type `error` into the **Find in logs** box, and read the line(s) it jumps to.
+The most common cause is `DATABASE_URL` not being set for the **Production**
+environment — go to **Settings → Environment Variables**, open
+`DATABASE_URL`, confirm the **Production** checkbox is enabled, and that the
+value matches the connection string from Neon's **Connection Details**
+exactly (starts with `postgresql://`, ends with `?sslmode=require`).
+
+> **Seeing "A server error has occurred" on `/admin`?** That means Step 4
+> hasn't been completed yet — the database has no tables. Complete Step 4
+> above, then reload the page.
 
 ### Step 5 — You're live
 
