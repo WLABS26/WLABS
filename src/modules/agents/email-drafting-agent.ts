@@ -11,7 +11,10 @@
  */
 import { z } from "zod";
 
+import { generateStructured } from "@/lib/ai/generate";
+import { isMockProvider } from "@/lib/ai/provider";
 import { Agent } from "./base-agent";
+import type { AgentExecuteContext } from "./types";
 
 const inputSchema = z.object({
   businessName: z.string(),
@@ -43,6 +46,39 @@ export type EmailDraftingInput = z.infer<typeof inputSchema>;
 export type EmailDraftingOutput = z.infer<typeof outputSchema>;
 
 const OPT_OUT = 'If this isn’t relevant, just reply "no thanks" and I won’t contact you again.';
+
+/** Subset of the email an AI provider may rewrite for sharper, business-specific copy. */
+const aiCopySchema = z.object({
+  subject: z.string(),
+  body: z.string(),
+});
+
+function buildAiSystemPrompt(input: EmailDraftingInput): string {
+  const linkRequirement = input.previewUrl
+    ? ` and MUST include this exact preview link somewhere in the body: ${input.previewUrl}`
+    : "";
+  return (
+    "You are a sales copywriter for WLABS, a service that builds website redesign concepts for local businesses. " +
+    "Rewrite the given draft email's subject and body to feel more personal and specific to this business, while " +
+    "keeping the same tone, structure, and call to action for this variant. Keep it under 150 words. Do not invent " +
+    "discounts, urgency, fake scarcity, testimonials, or guarantees. The email MUST end with this exact line, " +
+    `verbatim: "${OPT_OUT}"${linkRequirement}. Respond with ONLY a JSON object of the form ` +
+    '{"subject": "...", "body": "..."} - no markdown, no commentary, no code fences.'
+  );
+}
+
+function buildAiPrompt(input: EmailDraftingInput, draft: { subject: string; body: string }): string {
+  return `Business: ${input.businessName}${input.contactPerson ? ` (contact: ${input.contactPerson})` : ""}
+Industry: ${input.industryLabel}
+Location: ${input.city ?? "unspecified"}
+Audit score: ${input.auditScore !== null ? `${input.auditScore}/100` : "not scored"}
+Top issues found: ${input.topIssues.join("; ") || "none recorded"}
+Email variant: ${input.variant}
+Fixed price: ${input.price} ${input.currency}
+
+Draft email to rewrite (same JSON shape expected back - "subject" and "body" only):
+${JSON.stringify(draft, null, 2)}`;
+}
 
 function greeting(input: EmailDraftingInput): string {
   return input.contactPerson ? `Hi ${input.contactPerson.split(" ")[0]},` : `Hi ${input.businessName} team,`;
@@ -188,8 +224,28 @@ export class EmailDraftingAgent extends Agent<EmailDraftingInput, EmailDraftingO
   readonly inputSchema = inputSchema;
   readonly outputSchema = outputSchema;
 
-  protected async execute(input: EmailDraftingInput): Promise<EmailDraftingOutput> {
-    const { subject, body, ctaType } = buildEmail(input);
+  protected async execute(input: EmailDraftingInput, ctx: AgentExecuteContext): Promise<EmailDraftingOutput> {
+    const draft = buildEmail(input);
+
+    let subject = draft.subject;
+    let body = draft.body;
+    const { ctaType } = draft;
+
+    if (!isMockProvider()) {
+      const aiCopy = await generateStructured({
+        system: buildAiSystemPrompt(input),
+        prompt: buildAiPrompt(input, draft),
+        schema: aiCopySchema,
+      });
+
+      if (aiCopy) {
+        ctx.log("info", "Enhanced email draft with AI");
+        subject = aiCopy.subject;
+        body = aiCopy.body;
+      } else {
+        ctx.log("warn", "AI email generation unavailable, using template output");
+      }
+    }
 
     const personalizationFields = [
       "businessName",
@@ -199,10 +255,12 @@ export class EmailDraftingAgent extends Agent<EmailDraftingInput, EmailDraftingO
       input.previewUrl ? "previewUrl" : null,
     ].filter((v): v is string => Boolean(v));
 
-    // Compliance self-checks - flags route the draft to needs_review.
+    // Compliance self-checks - flags route the draft to needs_review. Re-checked
+    // against the final body regardless of whether it came from AI or template.
     const complianceFlags: string[] = [];
     if (!input.previewUrl) complianceFlags.push("No preview link available.");
     if (!body.includes("no thanks")) complianceFlags.push("Missing opt-out line.");
+    if (input.previewUrl && !body.includes(input.previewUrl)) complianceFlags.push("Preview link missing from email body.");
 
     const status = complianceFlags.length > 0 ? "needs_review" : "draft";
 

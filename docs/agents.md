@@ -44,6 +44,19 @@ validates the output, and returns a typed `AgentResult` (`completed` / `failed`
 | `email_drafting_agent` | Personalized, compliant outreach (6 variants) | `EmailDraft` (always draft) |
 | `email_qc_agent` | Review email for compliance/tone | `passed` / `needs_review` / `failed` |
 
+### AI-enhanced copy
+
+`redesign_brief_agent`, `preview_generator_agent`, and `email_drafting_agent`
+build a deterministic, template-based draft first - this is the full output in
+the default `AI_PROVIDER="mock"` mode. If a real provider is configured
+(`AI_PROVIDER="openai"` or `"anthropic"` + the matching API key, see
+`src/lib/ai/provider.ts`), the agent sends that draft to the model and asks it
+to rewrite the copy fields for the specific business, validates the JSON
+response (`src/lib/ai/generate.ts`), and merges it back in. Facts, contact
+details, links, compliance lines (opt-out, preview URL), and credibility/trust
+placeholders are never AI-authored - only the surrounding copy is. Any AI
+failure or invalid response silently falls back to the template draft.
+
 ## Pipelines
 
 - **`runLeadPipeline(leadId)`** — Qualify → Crawl → Audit. Writes
