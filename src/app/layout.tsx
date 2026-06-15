@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Outfit } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -48,7 +49,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${outfit.variable}`}>
-      <body className="bg-brand-navy text-foreground font-sans antialiased">{children}</body>
+      <body className="bg-brand-navy text-foreground font-sans antialiased">
+        {children}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }
