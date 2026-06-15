@@ -10,7 +10,7 @@ import { z } from "zod";
 
 import { generateStructured } from "@/lib/ai/generate";
 import { isMockProvider } from "@/lib/ai/provider";
-import { industryLabel, selectIndustryTemplate } from "@/modules/generator/industry-templates";
+import { industryLabel, resolveTheme, selectIndustryTemplate } from "@/modules/generator/industry-templates";
 import { Agent } from "./base-agent";
 import type { AgentExecuteContext } from "./types";
 
@@ -64,6 +64,7 @@ const previewThemeSchema = z.object({
   from: z.string(),
   to: z.string(),
   visualStyle: z.enum(["modern", "warm", "bold", "clinical", "premium"]),
+  fontFamily: z.string().nullable(),
 });
 
 const inputSchema = z.object({
@@ -75,6 +76,8 @@ const inputSchema = z.object({
   addressHint: z.string().nullable(),
   headline: z.string(),
   subheadline: z.string(),
+  brandColors: z.array(z.string()),
+  fontFamily: z.string().nullable(),
 });
 
 const outputSchema = z.object({
@@ -251,9 +254,11 @@ function buildTemplateContent(input: PreviewGenerationInput): PreviewGenerationO
     },
   };
 
+  const theme = resolveTheme(input.brandColors, template);
+
   return {
     content,
-    theme: { from: template.theme.from, to: template.theme.to, visualStyle: template.visualStyle },
+    theme: { from: theme.from, to: theme.to, visualStyle: template.visualStyle, fontFamily: input.fontFamily },
   };
 }
 

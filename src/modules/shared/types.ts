@@ -102,6 +102,7 @@ export type EmailStatus = (typeof EMAIL_STATUSES)[number];
 export const EMAIL_VARIANTS = [
   "direct_preview",
   "audit_first",
+  "audit_comparison",
   "soft_consult",
   "follow_up_1",
   "follow_up_2",

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { getLeadBySlug } from "@/modules/crm/leads";
+import { buildIntakeUrl } from "@/modules/generator/preview-store";
 import { INDUSTRIES } from "@/modules/shared/constants";
 import { AUDIT_CATEGORIES } from "@/modules/shared/types";
 
@@ -253,6 +254,76 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
               <GeneratePreviewForm leadId={lead.id} slug={lead.slug} />
             </CardContent>
           </Card>
+
+          {(lead.previews.length > 0 || lead.intakeSubmissions.length > 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Intake form</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {lead.previews.length > 0 && (
+                  <a
+                    href={buildIntakeUrl(lead.previews[0].slug, lead.previews[0].token)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-sm text-brand-cyan hover:underline"
+                  >
+                    <ExternalLink className="size-3.5 shrink-0" />
+                    <span className="truncate">{buildIntakeUrl(lead.previews[0].slug, lead.previews[0].token)}</span>
+                  </a>
+                )}
+
+                {lead.intakeSubmissions.length > 0 ? (
+                  <div className="space-y-4 border-t border-white/10 pt-3">
+                    {lead.intakeSubmissions.map((submission) => {
+                      const brandColors = (submission.brandColorsJson as string[] | null) ?? [];
+                      return (
+                        <div key={submission.id} className="space-y-2 text-sm">
+                          <p className="text-xs text-muted">Submitted {formatRelativeTime(submission.createdAt)}</p>
+                          {submission.targetCustomer && (
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted">Target customer</p>
+                              <p className="text-white">{submission.targetCustomer}</p>
+                            </div>
+                          )}
+                          {brandColors.length > 0 && (
+                            <div>
+                              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Brand colors</p>
+                              <div className="flex flex-wrap gap-2">
+                                {brandColors.map((color) => (
+                                  <span
+                                    key={color}
+                                    className="flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-xs text-white"
+                                  >
+                                    <span className="size-3 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+                                    {color}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {submission.preferredDomain && (
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted">Preferred domain</p>
+                              <p className="text-white">{submission.preferredDomain}</p>
+                            </div>
+                          )}
+                          {submission.additionalNotes && (
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted">Additional notes</p>
+                              <p className="whitespace-pre-wrap text-white">{submission.additionalNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted">No intake details submitted yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {lead.inboundRequests.length > 0 && (
             <Card>

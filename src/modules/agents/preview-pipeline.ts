@@ -52,9 +52,14 @@ export async function runPreviewGeneration(
     where: { leadId, crawlStatus: "success" },
     orderBy: { createdAt: "desc" },
   });
+  const intake = await prisma.intakeSubmission.findFirst({ where: { leadId }, orderBy: { createdAt: "desc" } });
 
-  const extracted = (capture?.extractedDataJson ?? null) as { addressHints?: string[] } | null;
+  const extracted = (capture?.extractedDataJson ?? null) as { addressHints?: string[]; brandColors?: string[]; fontFamily?: string | null } | null;
   const addressHint = extracted?.addressHints?.[0] ?? null;
+  const intakeBrandColorsRaw = intake?.brandColorsJson;
+  const intakeBrandColors = Array.isArray(intakeBrandColorsRaw) && intakeBrandColorsRaw.length > 0 ? (intakeBrandColorsRaw as string[]) : null;
+  const brandColors = intakeBrandColors ?? extracted?.brandColors ?? [];
+  const fontFamily = extracted?.fontFamily ?? null;
 
   const run = await startWorkflowRun({
     workflowType: "preview_pipeline",
@@ -86,12 +91,13 @@ export async function runPreviewGeneration(
   }
 
   const b = brief.output;
+  const targetCustomer = intake?.targetCustomer?.trim() || b.targetCustomer;
   await prisma.redesignBrief.create({
     data: {
       leadId,
       industry: lead.industry,
       businessSummary: b.businessSummary,
-      targetCustomer: b.targetCustomer,
+      targetCustomer,
       currentWeaknessesJson: b.currentWeaknesses,
       redesignOpportunitiesJson: b.redesignOpportunities,
       recommendedHeadline: b.recommendedHeadline,
@@ -118,6 +124,8 @@ export async function runPreviewGeneration(
       addressHint,
       headline: b.recommendedHeadline,
       subheadline: b.recommendedSubheadline,
+      brandColors,
+      fontFamily,
     },
     stepCtx,
   );

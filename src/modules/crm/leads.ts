@@ -3,6 +3,7 @@ import type { Lead, LeadStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/utils";
 import { logActivity } from "@/modules/crm/activity";
+import { buildIntakeUrl, getLatestPreviewForLead } from "@/modules/generator/preview-store";
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -82,6 +83,7 @@ export async function getLeadBySlug(slug: string) {
       emailDrafts: { orderBy: { createdAt: "desc" } },
       workflowSteps: { orderBy: { createdAt: "desc" }, include: { workflowRun: true } },
       inboundRequests: { orderBy: { createdAt: "desc" } },
+      intakeSubmissions: { orderBy: { createdAt: "desc" } },
     },
   });
 }
@@ -91,7 +93,14 @@ export type LeadDetail = NonNullable<Awaited<ReturnType<typeof getLeadBySlug>>>;
 /** Update a lead's CRM pipeline status and record it on the activity timeline. */
 export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   const lead = await prisma.lead.update({ where: { id: leadId }, data: { status } });
-  await logActivity(leadId, "status_changed", `Status changed to "${status.replace(/_/g, " ")}".`, { status });
+
+  const metadata: Record<string, unknown> = { status };
+  if (status === "replied" || status === "booked_call") {
+    const preview = await getLatestPreviewForLead(leadId);
+    if (preview) metadata.intakeUrl = buildIntakeUrl(preview.slug, preview.token);
+  }
+
+  await logActivity(leadId, "status_changed", `Status changed to "${status.replace(/_/g, " ")}".`, metadata);
   return lead;
 }
 

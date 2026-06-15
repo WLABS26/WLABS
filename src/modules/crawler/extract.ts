@@ -36,6 +36,14 @@ export interface ExtractedWebsiteData {
   contactPerson: string | null;
   /** Absolute URL of a separate Impressum/legal-notice page linked from this page, if found. */
   imprintUrl: string | null;
+  /** Absolute URL of the site's favicon/touch icon, if found. */
+  faviconUrl: string | null;
+  /** Value of <meta name="theme-color">, if present. */
+  themeColor: string | null;
+  /** A small set of representative hex brand colors found in <style> blocks. */
+  brandColors: string[];
+  /** Primary non-generic font family found in <style> blocks, if any. */
+  fontFamily: string | null;
 }
 
 const SOCIAL_DOMAINS = ["facebook.com", "instagram.com", "twitter.com", "x.com", "linkedin.com", "youtube.com", "tiktok.com"];
@@ -55,6 +63,13 @@ const PLACEHOLDER_PATTERNS: RegExp[] = [
   /insert (your )?(text|content|tagline|description) here/i,
   /\b(123[\s.-]?456[\s.-]?7890|555[\s.-]?555[\s.-]?5555|000[\s.-]?000[\s.-]?0000|123[\s.-]?123[\s.-]?1234)\b/,
 ];
+
+/** Generic CSS font-family keywords/stacks that don't represent a specific brand font. */
+const GENERIC_FONT_FAMILIES = new Set([
+  "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+  "-apple-system", "blinkmacsystemfont", "ui-sans-serif", "ui-serif",
+  "ui-monospace", "ui-rounded", "inherit", "initial", "unset", "emoji",
+]);
 
 /** Link text/href patterns for an Impressum / legal-notice page (DACH + generic English/French/Italian). */
 const IMPRINT_LINK_PATTERNS: RegExp[] = [
@@ -219,6 +234,98 @@ export function mergeImprintData(homepage: ExtractedWebsiteData, imprint: Extrac
   };
 }
 
+/** True if a hex color is effectively grayscale (white, black, or near-neutral gray). */
+function isGrayscaleHex(hex: string): boolean {
+  const value = hex.replace("#", "");
+  const expanded = value.length === 3 ? value.split("").map((c) => c + c).join("") : value.slice(0, 6);
+  if (expanded.length !== 6 || /[^0-9a-fA-F]/.test(expanded)) return true;
+
+  const r = Number.parseInt(expanded.slice(0, 2), 16);
+  const g = Number.parseInt(expanded.slice(2, 4), 16);
+  const b = Number.parseInt(expanded.slice(4, 6), 16);
+  return Math.max(r, g, b) - Math.min(r, g, b) < 16;
+}
+
+/** Extract an absolute favicon/touch-icon URL from a <link rel="...icon..."> tag, if any. */
+function extractFaviconUrl(rawHtml: string, baseUrl: string): string | null {
+  for (const tag of matchAll(rawHtml, /<link\b([^>]*)>/gi)) {
+    const attrs = tag[1];
+    if (!/rel=["'][^"']*icon[^"']*["']/i.test(attrs)) continue;
+
+    const hrefMatch = attrs.match(/href=["']([^"']*)["']/i);
+    const href = hrefMatch ? decodeEntities(hrefMatch[1]).trim() : "";
+    if (!href) continue;
+
+    try {
+      return new URL(href, baseUrl).href;
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+/** Extract <meta name="theme-color" content="..."> if present. */
+function extractThemeColor(rawHtml: string): string | null {
+  const match =
+    rawHtml.match(/<meta[^>]+name=["']theme-color["'][^>]*content=["']([^"']*)["']/i) ??
+    rawHtml.match(/<meta[^>]+content=["']([^"']*)["'][^>]*name=["']theme-color["']/i);
+  return match ? decodeEntities(match[1]).trim() || null : null;
+}
+
+/**
+ * Extract a small set of representative brand colors from <style> blocks.
+ * Prefers hex values assigned to "brand"/"primary"/"accent"/"theme" CSS
+ * custom properties; falls back to the most frequent non-grayscale hex
+ * colors used anywhere in the stylesheet.
+ */
+function extractBrandColors(rawHtml: string): string[] {
+  const styleBlocks = matchAll(rawHtml, /<style\b[^>]*>([\s\S]*?)<\/style>/gi)
+    .map((m) => m[1])
+    .join("\n");
+  if (!styleBlocks) return [];
+
+  const namedVars = unique(
+    matchAll(styleBlocks, /--[\w-]*(?:brand|primary|accent|theme)[\w-]*\s*:\s*(#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?)/gi)
+      .map((m) => m[1].toLowerCase())
+      .filter((hex) => !isGrayscaleHex(hex)),
+  );
+  if (namedVars.length > 0) return namedVars.slice(0, 3);
+
+  const counts = new Map<string, number>();
+  for (const m of matchAll(styleBlocks, /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?\b/g)) {
+    const hex = m[0].toLowerCase();
+    if (isGrayscaleHex(hex)) continue;
+    counts.set(hex, (counts.get(hex) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([hex]) => hex);
+}
+
+/**
+ * Extract the primary brand font family from <style> blocks, skipping
+ * generic CSS font keywords/stacks (sans-serif, system-ui, etc.).
+ */
+function extractFontFamily(rawHtml: string): string | null {
+  const styleBlocks = matchAll(rawHtml, /<style\b[^>]*>([\s\S]*?)<\/style>/gi)
+    .map((m) => m[1])
+    .join("\n");
+  if (!styleBlocks) return null;
+
+  for (const m of matchAll(styleBlocks, /font-family\s*:\s*([^;}{]+)/gi)) {
+    const firstFont = m[1].split(",")[0]?.trim().replace(/^["']|["']$/g, "");
+    if (firstFont && !GENERIC_FONT_FAMILIES.has(firstFont.toLowerCase())) {
+      return firstFont;
+    }
+  }
+
+  return null;
+}
+
 export function extractWebsiteData(rawHtml: string, finalUrl: string): ExtractedWebsiteData {
   const html = stripNonContent(rawHtml);
   const lower = rawHtml.toLowerCase();
@@ -287,6 +394,10 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
 
   const contactPerson = extractContactPerson(rawHtml);
   const imprintUrl = findImprintUrl(rawHtml, finalUrl);
+  const faviconUrl = extractFaviconUrl(rawHtml, finalUrl);
+  const themeColor = extractThemeColor(rawHtml);
+  const brandColors = extractBrandColors(rawHtml);
+  const fontFamily = extractFontFamily(rawHtml);
 
   return {
     title,
@@ -314,5 +425,9 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
     hasPlaceholderContent: PLACEHOLDER_PATTERNS.some((re) => re.test(rawHtml)),
     contactPerson,
     imprintUrl,
+    faviconUrl,
+    themeColor,
+    brandColors,
+    fontFamily,
   };
 }

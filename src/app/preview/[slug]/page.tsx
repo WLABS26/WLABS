@@ -49,12 +49,13 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
     from: BRAND.colors.blue,
     to: BRAND.colors.cyan,
     visualStyle: "modern",
+    fontFamily: null,
   };
   const audit = preview.lead.audits[0];
   const gradient = `linear-gradient(135deg, ${theme.from}, ${theme.to})`;
 
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div className="min-h-screen bg-white text-slate-900" style={{ fontFamily: theme.fontFamily ? `${theme.fontFamily}, sans-serif` : undefined }}>
       {/* WLABS preview banner */}
       <div className="sticky top-0 z-50 bg-brand-navy text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">

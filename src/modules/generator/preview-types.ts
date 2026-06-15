@@ -77,6 +77,8 @@ export interface PreviewTheme {
   from: string;
   to: string;
   visualStyle: VisualStyle;
+  /** Brand font family extracted from the lead's site, if any. */
+  fontFamily: string | null;
 }
 
 /** Audit before/after summary surfaced on the preview as a callout. */

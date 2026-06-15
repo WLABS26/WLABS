@@ -33,6 +33,10 @@ export const extractedWebsiteDataSchema = z.object({
   hasPlaceholderContent: z.boolean(),
   contactPerson: z.string().nullable(),
   imprintUrl: z.string().nullable(),
+  faviconUrl: z.string().nullable(),
+  themeColor: z.string().nullable(),
+  brandColors: z.array(z.string()),
+  fontFamily: z.string().nullable(),
 });
 
 export const categoryScoresSchema = z.object({

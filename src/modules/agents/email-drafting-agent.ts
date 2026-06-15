@@ -2,8 +2,8 @@
  * Email Drafting Agent.
  *
  * Generates a personalized, compliant outreach email for a prospect using the
- * audit findings and preview link. Produces six variants (direct preview,
- * audit-first, soft consult, two follow-ups, breakup). Every email is
+ * audit findings and preview link. Produces seven variants (direct preview,
+ * audit-first, audit-comparison, soft consult, two follow-ups, breakup). Every email is
  * business-only, names one or two objective observations, includes the preview
  * link and a clear CTA, states the fixed price, and carries an opt-out line.
  *
@@ -28,13 +28,16 @@ const inputSchema = z.object({
   price: z.number(),
   currency: z.string(),
   senderName: z.string(),
-  variant: z.enum(["direct_preview", "audit_first", "soft_consult", "follow_up_1", "follow_up_2", "breakup"]),
+  bestPracticeComparison: z.string().nullable().default(null),
+  benchmarkGap: z.string().nullable().default(null),
+  criticalFindings: z.array(z.string()).default([]),
+  variant: z.enum(["direct_preview", "audit_first", "audit_comparison", "soft_consult", "follow_up_1", "follow_up_2", "breakup"]),
 });
 
 const outputSchema = z.object({
   subject: z.string(),
   body: z.string(),
-  variant: z.enum(["direct_preview", "audit_first", "soft_consult", "follow_up_1", "follow_up_2", "breakup"]),
+  variant: z.enum(["direct_preview", "audit_first", "audit_comparison", "soft_consult", "follow_up_1", "follow_up_2", "breakup"]),
   ctaType: z.enum(["preview", "booking", "reply"]),
   personalizationFields: z.array(z.string()),
   previewLink: z.string().nullable(),
@@ -95,6 +98,17 @@ function observations(input: EmailDraftingInput): string {
   return issues.map((i) => `\n• ${i}`).join("");
 }
 
+function criticalFindingsList(input: EmailDraftingInput): string {
+  const findings = input.criticalFindings.slice(0, 3);
+  if (findings.length === 0) return observations(input);
+  return findings.map((f) => `\n• ${f}`).join("");
+}
+
+function benchmarkLine(input: EmailDraftingInput): string {
+  const parts = [input.bestPracticeComparison, input.benchmarkGap].filter((v): v is string => Boolean(v && v.trim()));
+  return parts.join(" ");
+}
+
 function signOff(input: EmailDraftingInput): string {
   return `Best,\n${input.senderName}\nWLABS — Website Laboratory`;
 }
@@ -146,6 +160,28 @@ ${signOff(input)}
 
 ${OPT_OUT}`,
       };
+
+    case "audit_comparison": {
+      const benchmark = benchmarkLine(input);
+      const benchmarkParagraph = benchmark ? `\n\n${benchmark}` : "";
+      return {
+        subject: `How ${input.businessName} compares to other ${input.industryLabel.toLowerCase()} sites`,
+        ctaType: "preview",
+        body: `${g}
+
+I ran a quick comparison of your website against other ${input.industryLabel.toLowerCase()} businesses${input.city ? ` in ${input.city}` : ""}, and a few things stood out:${criticalFindingsList(input)}${benchmarkParagraph}
+
+So I put together a concept showing what that could look like for ${input.businessName}:
+
+${preview ?? "[preview link]"}
+
+${priceLine(input)}${bookingLine(input)}
+
+${signOff(input)}
+
+${OPT_OUT}`,
+      };
+    }
 
     case "soft_consult":
       return {
@@ -220,7 +256,7 @@ ${OPT_OUT}`,
 
 export class EmailDraftingAgent extends Agent<EmailDraftingInput, EmailDraftingOutput> {
   readonly name = "email_drafting_agent";
-  readonly description = "Drafts a personalized, compliant outreach email (one of six variants) for a prospect.";
+  readonly description = "Drafts a personalized, compliant outreach email (one of seven variants) for a prospect.";
   readonly inputSchema = inputSchema;
   readonly outputSchema = outputSchema;
 
@@ -252,6 +288,7 @@ export class EmailDraftingAgent extends Agent<EmailDraftingInput, EmailDraftingO
       input.contactPerson ? "contactPerson" : null,
       input.city ? "city" : null,
       input.topIssues.length > 0 ? "auditIssues" : null,
+      input.criticalFindings.length > 0 ? "criticalFindings" : null,
       input.previewUrl ? "previewUrl" : null,
     ].filter((v): v is string => Boolean(v));
 
@@ -261,6 +298,9 @@ export class EmailDraftingAgent extends Agent<EmailDraftingInput, EmailDraftingO
     if (!input.previewUrl) complianceFlags.push("No preview link available.");
     if (!body.includes("no thanks")) complianceFlags.push("Missing opt-out line.");
     if (input.previewUrl && !body.includes(input.previewUrl)) complianceFlags.push("Preview link missing from email body.");
+    if (input.variant === "audit_comparison" && !input.bestPracticeComparison && !input.benchmarkGap && input.criticalFindings.length === 0) {
+      complianceFlags.push("No audit comparison data available - run an audit first.");
+    }
 
     const status = complianceFlags.length > 0 ? "needs_review" : "draft";
 

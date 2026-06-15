@@ -99,6 +99,7 @@ enum EmailStatus {
 enum EmailVariant {
   direct_preview
   audit_first
+  audit_comparison
   soft_consult
   follow_up_1
   follow_up_2
@@ -156,9 +157,9 @@ model Lead {
   city         String?
   country      String?
 
-  contactEmail   String?
-  contactPhone   String?
-  contactPerson  String?
+  contactEmail  String?
+  contactPhone  String?
+  contactPerson String?
 
   source    String?
   sourceUrl String?
@@ -177,14 +178,15 @@ model Lead {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  websiteCaptures WebsiteCapture[]
-  audits          Audit[]
-  redesignBriefs  RedesignBrief[]
-  previews        Preview[]
-  emailDrafts     EmailDraft[]
-  activities      Activity[]
-  workflowSteps   WorkflowStep[]
-  inboundRequests InboundRequest[]
+  websiteCaptures   WebsiteCapture[]
+  audits            Audit[]
+  redesignBriefs    RedesignBrief[]
+  previews          Preview[]
+  emailDrafts       EmailDraft[]
+  activities        Activity[]
+  workflowSteps     WorkflowStep[]
+  inboundRequests   InboundRequest[]
+  intakeSubmissions IntakeSubmission[]
 
   @@index([status])
   @@index([industry])
@@ -230,16 +232,16 @@ model Audit {
 
   recommendedPositioning       String?
   recommendedPageStructureJson Json?
-  salesAngle                    String?
-  urgencyReason                 String?
-  redesignPotential             String?
+  salesAngle                   String?
+  urgencyReason                String?
+  redesignPotential            String?
 
   /// Harsher, specific UX/conversion problems (AI-enhanced; template fallback in mock mode).
-  criticalFindingsJson Json?
+  criticalFindingsJson   Json?
   /// 1-2 sentence comparison to best-practice sites in the same industry.
   bestPracticeComparison String?
   /// Qualitative gap vs. market benchmarks.
-  benchmarkGap String?
+  benchmarkGap           String?
 
   qualificationStatus OpportunityLevel
 
@@ -253,15 +255,15 @@ model RedesignBrief {
   leadId String
   lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
-  industry       String?
+  industry        String?
   businessSummary String? @db.Text
   targetCustomer  String?
 
   currentWeaknessesJson     Json?
   redesignOpportunitiesJson Json?
 
-  recommendedHeadline    String?
-  recommendedSubheadline String?
+  recommendedHeadline     String?
+  recommendedSubheadline  String?
   suggestedCtasJson       Json?
   recommendedSectionsJson Json?
 
@@ -309,7 +311,7 @@ model EmailDraft {
   lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   subject String
-  body    String @db.Text
+  body    String       @db.Text
   variant EmailVariant
 
   status EmailStatus @default(draft)
@@ -376,6 +378,24 @@ model InboundRequest {
 
   @@index([status])
   @@index([email])
+}
+
+/// Richer brief submitted by an interested lead via the public intake form
+/// (linked to a Preview's slug/token). Preferred over crawled/inferred data
+/// when generating or regenerating a preview.
+model IntakeSubmission {
+  id     String @id @default(cuid())
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  targetCustomer  String? @db.Text
+  brandColorsJson Json?
+  preferredDomain String?
+  additionalNotes String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
 }
 
 // =========================================================
