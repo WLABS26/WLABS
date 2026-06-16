@@ -1,21 +1,30 @@
 import { FadeIn } from "@/components/motion/fade-in";
 import { SectionHeading } from "@/components/sections/section-heading";
-import { EXAMPLE_INDUSTRIES } from "@/modules/shared/constants";
 import { INDUSTRY_ICONS } from "@/components/visuals/industry-icons";
 import { Badge } from "@/components/ui/badge";
 
-export function Examples() {
+interface ExampleIndustry {
+  value: string;
+  label: string;
+  description: string;
+}
+
+interface ExamplesDict {
+  eyebrow: string;
+  title: string;
+  description: string;
+  previewBadge: string;
+  industries: ExampleIndustry[];
+}
+
+export function Examples({ dict }: { dict: ExamplesDict }) {
   return (
     <section className="section-padding">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="Industries"
-          title="Built for local service businesses."
-          description="WLABS uses configurable industry templates - tone, layout, and CTAs adapted to what works for each type of business."
-        />
+        <SectionHeading eyebrow={dict.eyebrow} title={dict.title} description={dict.description} />
 
         <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {EXAMPLE_INDUSTRIES.map((example, i) => {
+          {dict.industries.map((example, i) => {
             const Icon = INDUSTRY_ICONS[example.value as keyof typeof INDUSTRY_ICONS] ?? INDUSTRY_ICONS.other;
             return (
               <FadeIn key={example.value} delay={(i % 3) * 0.08}>
@@ -29,7 +38,7 @@ export function Examples() {
                   <div className="p-6">
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="text-lg font-bold text-white">{example.label}</h3>
-                      <Badge variant="brand">Preview concept</Badge>
+                      <Badge variant="brand">{dict.previewBadge}</Badge>
                     </div>
                     <p className="mt-2 text-sm leading-relaxed text-muted">{example.description}</p>
                   </div>

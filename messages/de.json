@@ -1,0 +1,307 @@
+{
+  "nav": {
+    "services": "Leistungen",
+    "process": "Ablauf",
+    "examples": "Beispiele",
+    "pricing": "Preise",
+    "faq": "FAQ",
+    "contact": "Kontakt",
+    "cta": "Vorschau anfragen"
+  },
+  "footer": {
+    "navigate": "Navigation",
+    "legal": "Rechtliches",
+    "getInTouch": "Kontakt",
+    "privacyPolicy": "Datenschutzerklärung",
+    "imprint": "Impressum",
+    "terms": "AGB",
+    "rights": "Alle Rechte vorbehalten.",
+    "tagline": "Wir analysieren. Wir gestalten. Wir verbessern.",
+    "supportingLine": "Moderne Websites, die überzeugen.",
+    "positioning": "Alte Website → moderne MVP-Website in 48 Stunden."
+  },
+  "localeSwitcher": {
+    "label": "Sprache",
+    "en": "EN",
+    "de": "DE"
+  },
+  "hero": {
+    "badge": "KI-gestützte Website-Fabrik",
+    "title1": "Moderne Websites.",
+    "title2": "Gemacht, um zu überzeugen.",
+    "description": "WLABS analysiert veraltete Unternehmenswebsites, gestaltet sie in moderne, conversion-optimierte MVP-Seiten um und macht sie in 48 Stunden launch-bereit.",
+    "primaryCta": "Vorschau anfragen",
+    "secondaryCta": "So funktioniert es",
+    "stat1": "100-Punkte-Standardaudit",
+    "stat2": "Festpreis · 999 €",
+    "stat3": "48-Stunden-Lieferzeit"
+  },
+  "problem": {
+    "eyebrow": "Das Problem",
+    "title": "Ihre Website kostet Sie möglicherweise Kunden, bevor diese überhaupt anrufen.",
+    "description": "Die meisten Unternehmenswebsites wurden vor Jahren erstellt und nie aktualisiert. Besucher merken das – und gehen.",
+    "points": [
+      "Veralteter erster Eindruck",
+      "Schlechte mobile Nutzung",
+      "Versteckte Kontaktmöglichkeiten",
+      "Unklare Leistungsbeschreibung",
+      "Fehlende Vertrauenssignale",
+      "Langsames oder verwirrendes Layout"
+    ]
+  },
+  "solution": {
+    "eyebrow": "Die WLABS-Methode",
+    "title": "Wir analysieren. Wir gestalten. Wir verbessern.",
+    "cards": [
+      {
+        "icon": "search",
+        "title": "Wir analysieren",
+        "description": "KI-gestützte Audits identifizieren, was Ihre Website zurückhält."
+      },
+      {
+        "icon": "layout-template",
+        "title": "Wir gestalten",
+        "description": "Moderne MVP-Websites, ausgerichtet auf Klarheit, Vertrauen und Conversion."
+      },
+      {
+        "icon": "rocket",
+        "title": "Wir verbessern",
+        "description": "Schnelle, erschwingliche Launch-Unterstützung, damit Ihr Unternehmen online professionell wirkt."
+      }
+    ]
+  },
+  "process": {
+    "eyebrow": "Ablauf",
+    "title": "Von veraltet zu optimiert in vier Schritten.",
+    "description": "Der gleiche standardisierte Prozess für jedes Projekt – schnell, wiederholbar und qualitätskontrolliert.",
+    "steps": [
+      {
+        "step": "01",
+        "title": "Analysieren",
+        "description": "Wir führen ein standardisiertes, KI-gestütztes Audit Ihrer aktuellen Website anhand unseres 100-Punkte-Conversion- und UX-Frameworks durch."
+      },
+      {
+        "step": "02",
+        "title": "Gestalten",
+        "description": "Wir entwickeln ein modernes MVP-Homepage-Konzept, das auf Ihre Branche, Ihr Unternehmen und Ihre Kunden zugeschnitten ist."
+      },
+      {
+        "step": "03",
+        "title": "Entwickeln",
+        "description": "Nach der Freigabe entwickeln wir die echte MVP-Website mit responsivem Layout, Kontaktformular und grundlegender SEO."
+      },
+      {
+        "step": "04",
+        "title": "Launchen",
+        "description": "Ihre neue Website geht hosting-fertig in 48 Stunden nach der Freigabe live."
+      }
+    ]
+  },
+  "offer": {
+    "eyebrow": "Was Sie erhalten",
+    "title": "Eine moderne Unternehmenswebsite ohne Agenturkomplexität.",
+    "description": "Keine langen Erstgespräche, keine aufgeblähten Projektscopes. Nur das Wesentliche, gut umgesetzt.",
+    "items": [
+      "1 MVP-Startseite",
+      "Mobile Optimierung",
+      "Kontaktformular",
+      "WhatsApp / Telefon-CTA",
+      "Google Maps / Standortbereich",
+      "Grundlegende SEO-Struktur",
+      "Hosting-fertige Einrichtung",
+      "Launch-Unterstützung"
+    ]
+  },
+  "pricing": {
+    "eyebrow": "Preise",
+    "title": "Einfache Festpreise. Keine Überraschungen.",
+    "description": "Ein transparenter Preis für eine launch-fertige MVP-Homepage. Optionale laufende Pflege verfügbar.",
+    "mvpBadge": "Beliebteste Wahl",
+    "mvpDescription": "Alles, was Sie benötigen, um eine veraltete Homepage durch eine moderne, conversion-starke zu ersetzen.",
+    "mvpOneTime": "einmalig",
+    "mvpCta": "Vorschau anfragen",
+    "carePlanBadge": "Optionales Zusatzpaket",
+    "carePlanDescription": "Halten Sie Ihre neue Website nach dem Launch schnell, sicher und aktuell.",
+    "carePlanPer": "Monat",
+    "carePlanCta": "Care-Plan anfragen",
+    "mvpIncludes": [
+      "Homepage-Neugestaltung",
+      "Mobile-first UX",
+      "Conversion-optimierter Text",
+      "Kontaktformular",
+      "Grundlegende SEO-Struktur",
+      "Vorschau vor dem Launch",
+      "48-Stunden-Lieferung nach Freigabe"
+    ],
+    "carePlanIncludes": [
+      "Hosting",
+      "Kleinere Updates",
+      "Technische Wartung",
+      "Performance-Monitoring",
+      "Support"
+    ]
+  },
+  "trust": {
+    "eyebrow": "Warum WLABS",
+    "title": "Eine neue Art von Agentur – für Transparenz und Schnelligkeit.",
+    "description": "WLABS basiert auf modernen KI-unterstützten Workflows mit menschlicher Qualitätskontrolle – so erhalten Sie Schnelligkeit ohne Vertrauensverlust.",
+    "points": [
+      "Transparente Festpreise",
+      "Vorschau-zuerst-Ansatz",
+      "Kein aufgeblähter Agenturprozess",
+      "Mit modernen KI-unterstützten Workflows entwickelt",
+      "Menschliche Qualitätskontrolle vor dem Launch",
+      "Klarer Projektscope, schnelle Lieferung"
+    ]
+  },
+  "cta": {
+    "title": "Möchten Sie sehen, wie Ihre Website aussehen könnte?",
+    "description": "Erhalten Sie ein kostenloses, unverbindliches Vorschaukonzept Ihrer modernen MVP-Homepage – zugeschnitten auf Ihr Unternehmen.",
+    "button": "Meine Vorschau anfragen"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Häufig gestellte Fragen",
+    "description": "Alles, was Sie über die Arbeitsweise von WLABS wissen müssen.",
+    "items": [
+      {
+        "question": "Ist das eine vollständig individuelle Website?",
+        "answer": "Das 999-€-MVP-Paket ist eine professionell gestaltete, moderne Homepage, die auf einer bewährten, conversion-starken Struktur aufbaut und auf Ihr Unternehmen, Ihren Text und Ihre Marke zugeschnitten ist. Es ist bewusst als MVP konzipiert, damit wir schnell liefern können – zusätzliche Seiten oder individuelle Funktionen können separat beauftragt werden."
+      },
+      {
+        "question": "Was ist in den 999 € enthalten?",
+        "answer": "Eine neu gestaltete, mobile-first Homepage mit conversion-optimiertem Text, einem funktionierenden Kontaktformular, WhatsApp/Telefon-Click-to-Call, einem Standort-/Kontaktbereich, grundlegender On-Page-SEO und einer privaten Vorschau, bevor etwas live geht."
+      },
+      {
+        "question": "Wie schnell kann die Website live gehen?",
+        "answer": "Sobald Sie die Vorschau freigeben und fehlende Inhalte bereitstellen, ist Ihre MVP-Website in der Regel innerhalb von 48 Stunden fertig."
+      },
+      {
+        "question": "Muss ich Inhalte bereitstellen?",
+        "answer": "Nein – wir erstellen den Text auf Basis Ihrer bestehenden Website und der von Ihnen geteilten Informationen. Sie können vor dem Launch Änderungen anfordern. Falls Sie bestimmte Fotos, Logos oder Texte verwenden möchten, können Sie diese gerne einsenden."
+      },
+      {
+        "question": "Kann ich Änderungen anfordern?",
+        "answer": "Ja. Jedes Projekt umfasst eine Vorschauphase, in der Sie Änderungen anfordern können, bevor die endgültige Version erstellt und live geschaltet wird."
+      },
+      {
+        "question": "Ist Hosting inklusive?",
+        "answer": "Das MVP-Paket macht Ihre Website hosting-fertig. Laufendes Hosting, Updates und Monitoring sind über unseren optionalen Care Plan (99 €/Monat) verfügbar, oder Sie hosten die Website selbst."
+      },
+      {
+        "question": "Können Sie meine Domain verbinden?",
+        "answer": "Ja – sobald Ihr MVP freigegeben ist, helfen wir Ihnen, es mit Ihrer bestehenden Domain oder einer neuen zu verbinden."
+      },
+      {
+        "question": "Arbeiten Sie in meiner Branche?",
+        "answer": "WLABS verwendet konfigurierbare Branchenvorlagen für Zahnärzte, Physiotherapeuten, Klempner, Elektriker, Rechtsanwälte, Steuerberater, Immobilienagenturen, Restaurants/Cafés, Beauty-/Ästhetikkliniken und Bau-/Handwerksbetriebe – und wir können uns an die meisten lokalen Dienstleistungsunternehmen anpassen."
+      },
+      {
+        "question": "Erstellen Sie auch Online-Shops?",
+        "answer": "Das MVP-Paket konzentriert sich auf Lead-Generierungs-Homepages für lokale Unternehmen, nicht auf vollständige E-Commerce-Shops. Wenn Sie einen Online-Shop benötigen, nehmen Sie Kontakt auf, und wir können den Umfang separat besprechen."
+      },
+      {
+        "question": "Wem gehört die Website?",
+        "answer": "Ihnen. Nach dem Launch gehören die Website und ihre Inhalte Ihrem Unternehmen."
+      }
+    ]
+  },
+  "examples": {
+    "eyebrow": "Branchen",
+    "title": "Entwickelt für lokale Dienstleistungsunternehmen.",
+    "description": "WLABS verwendet konfigurierbare Branchenvorlagen – Ton, Layout und CTAs angepasst an das, was für jede Unternehmensart funktioniert.",
+    "previewBadge": "Vorschaukonzept",
+    "industries": [
+      {
+        "value": "dentist",
+        "label": "Zahnarzt",
+        "description": "Ruhiges, modernes, vertrauensbasiertes Design für die Patientengewinnung."
+      },
+      {
+        "value": "construction",
+        "label": "Handwerksbetrieb",
+        "description": "Markantes Design, das Zuverlässigkeit und das Servicegebiet hervorhebt."
+      },
+      {
+        "value": "lawyer",
+        "label": "Kanzlei",
+        "description": "Autoritäres, glaubwürdiges Design, das schnell Vertrauen aufbaut."
+      },
+      {
+        "value": "physiotherapist",
+        "label": "Physiotherapeut",
+        "description": "Freundliches, zugängliches Design, das auf Terminbuchungen ausgerichtet ist."
+      },
+      {
+        "value": "restaurant",
+        "label": "Restaurant",
+        "description": "Appetitweckende Visuals mit Speisekarten- und Reservierungs-CTAs."
+      },
+      {
+        "value": "real_estate",
+        "label": "Immobilienagentur",
+        "description": "Listings-first-Layout, das lokale Marktglaubwürdigkeit aufbaut."
+      }
+    ]
+  },
+  "audit": {
+    "eyebrow": "Das Audit",
+    "title": "Ein standardisiertes 100-Punkte-Website-Audit.",
+    "description": "Jedes Projekt beginnt mit demselben rigorosen, wiederholbaren Audit, damit Sie genau wissen, wo Ihre Website heute steht und was sie zurückhält.",
+    "scoredOut": "Jede Website wird in 7 Kategorien mit insgesamt {total} Punkten bewertet."
+  },
+  "pages": {
+    "home": {
+      "metaTitle": "WLABS — Website Laboratory | Moderne Websites, die überzeugen.",
+      "metaDescription": "WLABS analysiert veraltete Unternehmenswebsites, gestaltet sie in moderne, conversion-optimierte MVP-Seiten um und macht sie in 48 Stunden launch-bereit. Festpreis: 999 €."
+    },
+    "contact": {
+      "metaTitle": "Kontakt",
+      "metaDescription": "Fordern Sie eine kostenlose Website-Vorschau an oder senden Sie WLABS eine Nachricht – wir antworten in der Regel innerhalb eines Werktages.",
+      "eyebrow": "Kontakt",
+      "title": "Lassen Sie uns Ihre moderne Website bauen.",
+      "description": "Fordern Sie ein kostenloses Vorschaukonzept Ihrer neuen Homepage an oder senden Sie uns eine Nachricht. Kein Spam, keine Verpflichtung.",
+      "emailCardTitle": "Lieber per E-Mail?",
+      "emailCardDescription": "Sie können uns auch direkt kontaktieren – wir antworten innerhalb eines Werktages.",
+      "nextStepsTitle": "Wie geht es weiter?",
+      "nextStepsDescription": "Wir prüfen Ihre Anfrage, führen ein schnelles Audit Ihrer aktuellen Website durch und senden Ihnen einen Vorschau-Link – ohne Verpflichtung.",
+      "noSpamTitle": "Kein Spam, niemals",
+      "noSpamDescription": "Wir verwenden Ihre Daten nur zur Vorbereitung Ihrer Vorschau und für eine einmalige Nachfrage. Sie können sich jederzeit abmelden."
+    },
+    "services": {
+      "metaTitle": "Leistungen",
+      "metaDescription": "WLABS prüft Ihre aktuelle Website anhand eines standardisierten 100-Punkte-Frameworks und gestaltet dann eine moderne MVP-Homepage, die auf Ihr Unternehmen zugeschnitten ist.",
+      "eyebrow": "Leistungen",
+      "title": "Alles, was Sie brauchen, um eine veraltete Website durch eine moderne zu ersetzen.",
+      "description": "WLABS kombiniert ein standardisiertes Audit, KI-unterstütztes Design und menschliche Qualitätskontrolle in einem Festpreis-Service – damit Sie immer wissen, was Sie bekommen."
+    },
+    "process": {
+      "metaTitle": "Ablauf",
+      "metaDescription": "Wie WLABS eine veraltete Website in eine moderne, launch-fertige MVP in 48 Stunden verwandelt – analysieren, gestalten, entwickeln und launchen.",
+      "eyebrow": "So funktioniert es",
+      "title": "Ein standardisierter, wiederholbarer Prozess – KI-gestützt, menschlich geprüft.",
+      "description": "Jedes Projekt folgt dem gleichen vierstufigen Workflow, damit die Lieferung schnell und konsistent bleibt, ohne Qualitätseinbußen."
+    },
+    "examples": {
+      "metaTitle": "Beispiele",
+      "metaDescription": "Entdecken Sie, wie WLABS moderne, conversion-fokussierte Homepage-Designs für verschiedene lokale Unternehmensarten anpasst.",
+      "eyebrow": "Beispiele",
+      "title": "Sehen Sie, was für Ihre Branche möglich ist.",
+      "description": "WLABS verwendet konfigurierbare Branchenvorlagen – Ton, Layout und Handlungsaufforderungen angepasst an das, was für jede Art von Unternehmen tatsächlich funktioniert."
+    },
+    "pricing": {
+      "metaTitle": "Preise",
+      "metaDescription": "Einfache Festpreise für eine launch-fertige MVP-Website: 999 € einmalig, mit einem optionalen Care Plan für 99 €/Monat für Hosting und Wartung.",
+      "eyebrow": "Preise",
+      "title": "Ein einfacher Preis. Keine versteckten Kosten.",
+      "description": "Ein transparenter Festpreis für eine launch-fertige MVP-Homepage – plus optionaler Care Plan, damit alles reibungslos läuft."
+    },
+    "faq": {
+      "metaTitle": "FAQ",
+      "metaDescription": "Antworten auf häufige Fragen zu WLABS-Preisen, Prozessen, Timelines und dem Leistungsumfang.",
+      "eyebrow": "FAQ",
+      "title": "Fragen? Wir haben Antworten.",
+      "description": "Alles, was Sie wissen müssen, bevor Sie Ihre kostenlose Website-Vorschau anfragen."
+    }
+  }
+}

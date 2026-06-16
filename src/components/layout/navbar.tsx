@@ -6,12 +6,26 @@ import { usePathname } from "next/navigation";
 import { Menu, ArrowRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { NAV_LINKS, PRIMARY_CTA } from "@/modules/shared/constants";
+import type { Locale } from "@/lib/i18n-config";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Logo } from "@/components/layout/logo";
+import { LocaleSwitcher } from "@/components/layout/locale-switcher";
 
-export function Navbar() {
+interface NavLink {
+  label: string;
+  href: string;
+}
+
+interface NavbarProps {
+  navLinks: NavLink[];
+  ctaLabel: string;
+  ctaHref: string;
+  locale: Locale;
+  localeLabels: Record<string, string>;
+}
+
+export function Navbar({ navLinks, ctaLabel, ctaHref, locale, localeLabels }: NavbarProps) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
 
@@ -30,16 +44,16 @@ export function Navbar() {
       )}
     >
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-        <Logo />
+        <Logo href={`/${locale}`} />
 
         <div className="hidden items-center gap-8 lg:flex">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
                 "text-sm font-medium transition-colors hover:text-white",
-                pathname === link.href ? "text-white" : "text-muted",
+                pathname === link.href || pathname.startsWith(link.href + "/") ? "text-white" : "text-muted",
               )}
             >
               {link.label}
@@ -47,47 +61,51 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="hidden lg:block">
+        <div className="hidden items-center gap-3 lg:flex">
+          <LocaleSwitcher currentLocale={locale} labels={localeLabels} />
           <Button asChild>
-            <Link href={PRIMARY_CTA.href}>
-              {PRIMARY_CTA.label}
+            <Link href={ctaHref}>
+              {ctaLabel}
               <ArrowRight className="size-4" />
             </Link>
           </Button>
         </div>
 
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
-              <Menu className="size-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
-            <div className="mt-8 flex flex-col gap-6">
-              {NAV_LINKS.map((link) => (
-                <SheetClose key={link.href} asChild>
-                  <Link
-                    href={link.href}
-                    className={cn(
-                      "text-lg font-medium transition-colors hover:text-white",
-                      pathname === link.href ? "text-white" : "text-muted",
-                    )}
-                  >
-                    {link.label}
-                  </Link>
+        <div className="flex items-center gap-2 lg:hidden">
+          <LocaleSwitcher currentLocale={locale} labels={localeLabels} />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Open menu">
+                <Menu className="size-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <div className="mt-8 flex flex-col gap-6">
+                {navLinks.map((link) => (
+                  <SheetClose key={link.href} asChild>
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        "text-lg font-medium transition-colors hover:text-white",
+                        pathname === link.href ? "text-white" : "text-muted",
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </SheetClose>
+                ))}
+                <SheetClose asChild>
+                  <Button asChild className="mt-2 w-full">
+                    <Link href={ctaHref}>
+                      {ctaLabel}
+                      <ArrowRight className="size-4" />
+                    </Link>
+                  </Button>
                 </SheetClose>
-              ))}
-              <SheetClose asChild>
-                <Button asChild className="mt-2 w-full">
-                  <Link href={PRIMARY_CTA.href}>
-                    {PRIMARY_CTA.label}
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-              </SheetClose>
-            </div>
-          </SheetContent>
-        </Sheet>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </nav>
     </header>
   );

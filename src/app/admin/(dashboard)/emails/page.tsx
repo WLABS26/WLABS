@@ -43,13 +43,13 @@ export default async function EmailsPage({ searchParams }: EmailsPageProps) {
             Outreach drafts are never sent automatically — approve them here, then export and send manually.
           </p>
         </div>
-        <a
+        <Link
           href="/admin/emails/export"
           className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/5"
         >
           <Download className="size-4" />
           Export approved (CSV)
-        </a>
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-2">
