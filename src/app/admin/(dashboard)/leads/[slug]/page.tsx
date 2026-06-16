@@ -247,15 +247,22 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                         </a>
                         <span className="text-xs text-muted">{preview.viewCount} views</span>
                       </div>
-                      <a
-                        href={`/preview/${preview.slug}?mode=wireframe${preview.token ? `&token=${preview.token}` : ""}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-brand-cyan"
-                      >
-                        <LayoutTemplate className="size-3.5" />
-                        View wireframe
-                      </a>
+                      {preview.wireframeHtml ? (
+                        <a
+                          href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-brand-cyan transition-colors hover:text-white"
+                        >
+                          <LayoutTemplate className="size-3.5" />
+                          View interactive wireframe
+                        </a>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-xs text-muted">
+                          <LayoutTemplate className="size-3.5 animate-pulse" />
+                          Wireframe generating…
+                        </span>
+                      )}
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={preview.status === "approved" ? "success" : "default"}>{preview.status.replace(/_/g, " ")}</Badge>
                         {preview.qcStatus && <Badge variant="outline">QC: {preview.qcStatus.replace(/_/g, " ")}</Badge>}

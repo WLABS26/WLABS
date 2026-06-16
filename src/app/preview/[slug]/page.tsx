@@ -49,6 +49,66 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
     return <WireframePage preview={preview} />;
   }
 
+  // Serve AI-generated interactive wireframe in a full-page iframe (primary experience).
+  const wireframeHtml = preview.wireframeHtml;
+  if (wireframeHtml) {
+    const iframeSrc = `/api/wireframe/${slug}${token ? `?token=${token}` : ""}`;
+    return (
+      <div style={{ position: "fixed", inset: 0, overflow: "hidden", background: "#0F172A" }}>
+        {payment === "success" && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              background: "#16a34a",
+              color: "#fff",
+              padding: "13px 20px",
+              textAlign: "center",
+              fontSize: "14px",
+              fontWeight: 600,
+              letterSpacing: "0.1px",
+            }}
+          >
+            ✓ Payment confirmed — we&apos;ll be in touch within 48 hours to begin your build!
+          </div>
+        )}
+        {payment === "cancelled" && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              zIndex: 9999,
+              background: "#d97706",
+              color: "#fff",
+              padding: "13px 20px",
+              textAlign: "center",
+              fontSize: "14px",
+              fontWeight: 600,
+            }}
+          >
+            Checkout was cancelled — no payment was made. Ready when you are.
+          </div>
+        )}
+        <iframe
+          src={iframeSrc}
+          title={`Website concept for ${preview.lead.businessName}`}
+          style={{
+            width: "100%",
+            height: payment ? "calc(100% - 46px)" : "100%",
+            border: "none",
+            display: "block",
+            marginTop: payment ? "46px" : 0,
+          }}
+        />
+      </div>
+    );
+  }
+
   const content = preview.contentJson as unknown as PreviewContent;
   const theme = (preview.themeJson as unknown as PreviewTheme) ?? {
     from: BRAND.colors.blue,

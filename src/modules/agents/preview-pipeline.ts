@@ -7,6 +7,7 @@
  * private token so it can be shared at /preview/[slug]?token=...
  */
 import { randomBytes } from "node:crypto";
+import { after } from "next/server";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,7 @@ import { sourcePreviewImages } from "@/modules/generator/image-sourcing";
 import { previewGenerationAgent } from "./preview-generation-agent";
 import { previewQcAgent } from "./preview-qc-agent";
 import { redesignStrategyAgent } from "./redesign-strategy-agent";
+import { wireframeGenerationAgent } from "./wireframe-generation-agent";
 import { finishWorkflowRun, runAgentStep, startWorkflowRun } from "./runner";
 
 export interface RunPreviewGenerationResult {
@@ -178,6 +180,48 @@ export async function runPreviewGeneration(
   await logActivity(leadId, "preview_generated", "Preview homepage concept generated.", { previewId: created.id, slug });
 
   await finishWorkflowRun(run.id, "completed");
+
+  // Generate interactive wireframe in background (uses Opus, may take 30–60 s).
+  const wireframeInput = {
+    businessName: lead.businessName,
+    industry: lead.industry,
+    city: lead.city ?? null,
+    country: lead.country ?? null,
+    contactPhone: lead.contactPhone ?? null,
+    contactEmail: lead.contactEmail ?? null,
+    websiteUrl: lead.websiteUrl ?? null,
+    auditScore: audit?.overallScore ?? null,
+    topIssues: (audit?.topIssuesJson as string[] | undefined) ?? [],
+    criticalFindings: (audit?.criticalFindingsJson as string[] | undefined) ?? [],
+    extractedTitle: capture?.title ?? null,
+    extractedH1: capture?.h1 ?? null,
+    extractedMetaDescription: capture?.metaDescription ?? null,
+    extractedText: capture?.extractedText ? capture.extractedText.slice(0, 3000) : null,
+    imageUrls: extracted?.imageUrls ?? [],
+    brandColors: extracted?.brandColors ?? [],
+    addressHint: extracted?.addressHints?.[0] ?? null,
+    language: (["de", "at", "ch", "germany", "austria", "switzerland", "deutschland", "österreich", "schweiz"].some(
+      (c) => (lead.country ?? "").toLowerCase().includes(c),
+    )
+      ? "de"
+      : "en") as "de" | "en",
+  };
+
+  const previewId = created.id;
+  after(async () => {
+    try {
+      const result = await wireframeGenerationAgent.run(wireframeInput, { leadId });
+      if (result.status === "completed" && result.output?.wireframeHtml) {
+        await prisma.preview.update({
+          where: { id: previewId },
+          data: { wireframeHtml: result.output.wireframeHtml },
+        });
+        await logActivity(leadId, "wireframe_generated", "Interactive wireframe generated successfully.", { previewId });
+      }
+    } catch (err) {
+      console.error("[preview-pipeline] wireframe generation failed:", err);
+    }
+  });
 
   return { workflowRunId: run.id, previewId: created.id, slug, token, ok: true };
 }

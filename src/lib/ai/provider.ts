@@ -16,6 +16,8 @@ export interface AICompleteOptions {
   /** Lower = more deterministic. */
   temperature?: number;
   maxTokens?: number;
+  /** Override the provider's default model for this call. */
+  model?: string;
 }
 
 export interface AIProvider {
@@ -48,7 +50,7 @@ class OpenAIProvider implements AIProvider {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
       body: JSON.stringify({
-        model: this.model,
+        model: options.model ?? this.model,
         temperature: options.temperature ?? 0.4,
         max_tokens: options.maxTokens ?? 1200,
         messages: [
@@ -79,7 +81,7 @@ class AnthropicProvider implements AIProvider {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: this.model,
+        model: options.model ?? this.model,
         max_tokens: options.maxTokens ?? 1200,
         temperature: options.temperature ?? 0.4,
         ...(options.system ? { system: options.system } : {}),

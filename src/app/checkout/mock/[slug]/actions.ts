@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { getPreviewBySlug } from "@/modules/generator/preview-store";
 import { markLeadAsPaid } from "@/modules/payments/stripe";
+import { runFullWebsiteBuild } from "@/modules/agents/website-build";
 
 /**
  * Completes the local mock checkout flow: marks the lead as paid via the
@@ -19,7 +21,9 @@ export async function completeMockCheckoutAction(formData: FormData): Promise<vo
     redirect("/");
   }
 
-  await markLeadAsPaid(preview.lead.id, { checkoutSessionId: `mock_${preview.lead.id}_${Date.now()}` });
+  const leadId = preview.lead.id;
+  await markLeadAsPaid(leadId, { checkoutSessionId: `mock_${leadId}_${Date.now()}` });
+  after(() => runFullWebsiteBuild(leadId));
 
   const tokenParam = token ? `?token=${token}` : "";
   const separator = token ? "&" : "?";

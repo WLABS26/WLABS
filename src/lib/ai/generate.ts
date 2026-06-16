@@ -22,6 +22,32 @@ function extractJson(text: string): string {
   return text.trim();
 }
 
+/**
+ * Freeform text generation — no JSON parsing, no schema validation.
+ * Use for large outputs (HTML, long-form copy) where structured output
+ * is impractical. Returns null in mock mode or on failure.
+ */
+export async function generateText(options: {
+  system: string;
+  prompt: string;
+  temperature?: number;
+  maxTokens?: number;
+  model?: string;
+}): Promise<string | null> {
+  if (isMockProvider()) return null;
+  try {
+    return await getAIProvider().complete({
+      system: options.system,
+      prompt: options.prompt,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      model: options.model,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function generateStructured<T>(options: {
   system: string;
   prompt: string;
