@@ -32,6 +32,7 @@ export interface PreviewContent {
     primaryCta: PreviewCta;
     secondaryCta: PreviewCta;
     trustCue: string;
+    heroImageUrl?: string;
   };
   problem: {
     heading: string;
@@ -40,7 +41,11 @@ export interface PreviewContent {
   services: {
     heading: string;
     intro: string;
-    items: { title: string; description: string }[];
+    items: { title: string; description: string; imageUrl?: string }[];
+  };
+  /** Optional gallery section shown between services and why-us. */
+  gallery?: {
+    images: { url: string; alt: string }[];
   };
   whyUs: {
     heading: string;

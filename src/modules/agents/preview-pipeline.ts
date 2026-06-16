@@ -14,6 +14,7 @@ import { logActivity } from "@/modules/crm/activity";
 import { slugify } from "@/lib/utils";
 
 import type { PreviewContent } from "@/modules/generator/preview-types";
+import { sourcePreviewImages } from "@/modules/generator/image-sourcing";
 
 import { previewGenerationAgent } from "./preview-generation-agent";
 import { previewQcAgent } from "./preview-qc-agent";
@@ -54,7 +55,7 @@ export async function runPreviewGeneration(
   });
   const intake = await prisma.intakeSubmission.findFirst({ where: { leadId }, orderBy: { createdAt: "desc" } });
 
-  const extracted = (capture?.extractedDataJson ?? null) as { addressHints?: string[]; brandColors?: string[]; fontFamily?: string | null } | null;
+  const extracted = (capture?.extractedDataJson ?? null) as { addressHints?: string[]; brandColors?: string[]; fontFamily?: string | null; imageUrls?: string[] } | null;
   const addressHint = extracted?.addressHints?.[0] ?? null;
   const intakeBrandColorsRaw = intake?.brandColorsJson;
   const intakeBrandColors = Array.isArray(intakeBrandColorsRaw) && intakeBrandColorsRaw.length > 0 ? (intakeBrandColorsRaw as string[]) : null;
@@ -135,6 +136,29 @@ export async function runPreviewGeneration(
     throw new Error("Preview generation failed.");
   }
 
+  // ---- Step 3: Source images (scraped + DALL-E fills) ----
+  const images = await sourcePreviewImages(
+    extracted?.imageUrls ?? [],
+    lead.industry,
+    lead.businessName,
+  );
+
+  const richContent: PreviewContent = {
+    ...preview.output.content,
+    hero: {
+      ...preview.output.content.hero,
+      ...(images.heroImageUrl ? { heroImageUrl: images.heroImageUrl } : {}),
+    },
+    services: {
+      ...preview.output.content.services,
+      items: preview.output.content.services.items.map((item, i) => ({
+        ...item,
+        ...(i === 0 && images.serviceImages.get("__first__") ? { imageUrl: images.serviceImages.get("__first__") } : {}),
+      })),
+    },
+    ...(images.galleryImages.length >= 3 ? { gallery: { images: images.galleryImages } } : {}),
+  };
+
   const slug = await uniquePreviewSlug(lead.slug);
   const token = randomBytes(16).toString("hex");
 
@@ -144,7 +168,7 @@ export async function runPreviewGeneration(
       slug,
       token,
       status: "generated",
-      contentJson: preview.output.content as unknown as Prisma.InputJsonValue,
+      contentJson: richContent as unknown as Prisma.InputJsonValue,
       themeJson: preview.output.theme as unknown as Prisma.InputJsonValue,
       previewUrl: `/preview/${slug}`,
     },

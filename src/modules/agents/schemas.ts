@@ -20,6 +20,7 @@ export const extractedWebsiteDataSchema = z.object({
   socialLinks: z.array(z.string()),
   addressHints: z.array(z.string()),
   imagesCount: z.number(),
+  imageUrls: z.array(z.string()).default([]),
   formsCount: z.number(),
   linksCount: z.number(),
   wordCount: z.number(),

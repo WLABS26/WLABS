@@ -20,6 +20,8 @@ export interface ExtractedWebsiteData {
   socialLinks: string[];
   addressHints: string[];
   imagesCount: number;
+  /** Absolute URLs of content images found on the page (max 20), filtered to exclude icons/logos. */
+  imageUrls: string[];
   formsCount: number;
   linksCount: number;
   wordCount: number;
@@ -388,6 +390,13 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
   ).slice(0, 5);
 
   const imagesCount = matchAll(html, /<img\b/gi).length;
+  const imageUrls = unique(
+    matchAll(rawHtml, /<img\b[^>]*\bsrc=["']([^"']{10,})["']/gi)
+      .map((m) => m[1])
+      .filter((src) => src.startsWith("http") || src.startsWith("//"))
+      .map((src) => (src.startsWith("//") ? `https:${src}` : src))
+      .filter((src) => !/(icon|logo|favicon|sprite|arrow|1x1|pixel|tracking|badge|seal|cert)/i.test(src)),
+  ).slice(0, 20);
   const formsCount = matchAll(html, /<form\b/gi).length;
   const linksCount = matchAll(html, /<a\b/gi).length;
   const wordCount = clean(html).split(/\s+/).filter(Boolean).length;
@@ -412,6 +421,7 @@ export function extractWebsiteData(rawHtml: string, finalUrl: string): Extracted
     socialLinks,
     addressHints,
     imagesCount,
+    imageUrls,
     formsCount,
     linksCount,
     wordCount,

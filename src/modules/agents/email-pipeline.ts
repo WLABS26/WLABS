@@ -24,6 +24,12 @@ export interface RunEmailDraftingResult {
   status: string;
 }
 
+function detectEmailLanguage(country: string | null | undefined): "de" | "en" {
+  if (!country) return "en";
+  const dach = ["de", "at", "ch", "germany", "austria", "switzerland", "deutschland", "österreich", "schweiz"];
+  return dach.some((c) => country.toLowerCase().includes(c)) ? "de" : "en";
+}
+
 function senderName(): string {
   const from = process.env.EMAIL_FROM;
   if (from) {
@@ -44,6 +50,8 @@ export async function runEmailDrafting(
 ): Promise<RunEmailDraftingResult> {
   const lead = await prisma.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error(`Lead not found: ${leadId}`);
+
+  const language = detectEmailLanguage(lead.country);
 
   const audit = await prisma.audit.findFirst({ where: { leadId }, orderBy: { createdAt: "desc" } });
   const preview = await prisma.preview.findFirst({ where: { leadId }, orderBy: { createdAt: "desc" } });
@@ -79,6 +87,7 @@ export async function runEmailDrafting(
       currency: PRICING.mvp.currency,
       senderName: senderName(),
       variant,
+      language,
     },
     stepCtx,
   );
@@ -96,6 +105,7 @@ export async function runEmailDrafting(
       body: d.body,
       variant: d.variant,
       status: d.status,
+      language: d.language,
       personalizationJson: d.personalizationFields as unknown as Prisma.InputJsonValue,
       complianceFlagsJson: d.complianceFlags as unknown as Prisma.InputJsonValue,
     },
@@ -110,6 +120,7 @@ export async function runEmailDrafting(
       businessName: lead.businessName,
       hasPreviewLink: Boolean(previewUrl),
       isSuppressed: Boolean(suppression),
+      language,
     },
     stepCtx,
   );

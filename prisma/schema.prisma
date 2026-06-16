@@ -348,7 +348,8 @@ model EmailDraft {
   body    String       @db.Text
   variant EmailVariant
 
-  status EmailStatus @default(draft)
+  status   EmailStatus @default(draft)
+  language String      @default("en")
 
   personalizationJson Json?
   complianceFlagsJson Json?
