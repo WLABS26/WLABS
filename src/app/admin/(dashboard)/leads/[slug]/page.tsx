@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, Mail, MapPin, Phone, RotateCcw, User, Workflow } from "lucide-react";
 
-import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge } from "@/components/admin/status-badge";
+import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge, PaymentStatusBadge } from "@/components/admin/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ import { AddNoteForm } from "./add-note-form";
 import { DraftEmailForm } from "./draft-email-form";
 import { GeneratePreviewForm } from "./generate-preview-form";
 import { LeadStatusForm } from "./lead-status-form";
+import { PaymentStatusForm } from "./payment-status-form";
 import { RunPipelineForm } from "./run-pipeline-form";
 
 const EMAIL_STATUS_VARIANTS: Record<string, "default" | "brand" | "success" | "warning" | "destructive"> = {
@@ -83,7 +84,10 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           <h1 className="text-2xl font-bold text-white">{lead.businessName}</h1>
           <p className="mt-1 text-sm text-muted">{INDUSTRY_LABELS.get(lead.industry) ?? lead.industry}</p>
         </div>
-        <LeadStatusBadge status={lead.status} />
+        <div className="flex items-center gap-2">
+          {lead.paymentStatus !== "unpaid" && <PaymentStatusBadge status={lead.paymentStatus} />}
+          <LeadStatusBadge status={lead.status} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -196,6 +200,20 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                   Delete lead
                 </DeleteLeadButton>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <PaymentStatusForm leadId={lead.id} slug={lead.slug} paymentStatus={lead.paymentStatus} />
+              {lead.stripeCheckoutSessionId && (
+                <p className="border-t border-white/10 pt-3 text-xs text-muted">
+                  Checkout session: <span className="break-all text-white">{lead.stripeCheckoutSessionId}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
 

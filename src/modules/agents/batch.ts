@@ -51,6 +51,33 @@ function clampBatchSize(value: number | undefined): number {
   return Math.min(50, Math.floor(value));
 }
 
+/**
+ * Select eligible, non-suppressed leads for a batch operation. Paid leads
+ * (Stripe Checkout completed) jump the queue: they're selected first, oldest
+ * first, then the remaining slots are filled with unpaid leads, also oldest
+ * first.
+ */
+async function selectBatchLeads(operation: BatchOperation, batchSize: number) {
+  const where = { status: { in: DEFAULT_STATUSES[operation] }, doNotContact: false };
+
+  const paidLeads = await prisma.lead.findMany({
+    where: { ...where, paymentStatus: "paid" },
+    orderBy: { createdAt: "asc" },
+    take: batchSize,
+  });
+
+  const remaining = batchSize - paidLeads.length;
+  if (remaining <= 0) return paidLeads;
+
+  const otherLeads = await prisma.lead.findMany({
+    where: { ...where, paymentStatus: { not: "paid" } },
+    orderBy: { createdAt: "asc" },
+    take: remaining,
+  });
+
+  return [...paidLeads, ...otherLeads];
+}
+
 async function processLead(operation: BatchOperation, leadId: string, createdBy: string): Promise<string> {
   switch (operation) {
     case "full_pipeline": {
@@ -78,11 +105,7 @@ export async function runBatch(options: BatchOptions): Promise<BatchResult> {
   const createdBy = options.createdBy ?? "batch";
   const delayMs = options.delayMs ?? 250;
 
-  const leads = await prisma.lead.findMany({
-    where: { status: { in: DEFAULT_STATUSES[options.operation] }, doNotContact: false },
-    orderBy: { createdAt: "asc" },
-    take: batchSize,
-  });
+  const leads = await selectBatchLeads(options.operation, batchSize);
 
   const results: BatchRowResult[] = [];
   for (const lead of leads) {

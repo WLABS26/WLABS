@@ -70,6 +70,11 @@ export const OPPORTUNITY_LEVELS = [
 ] as const;
 export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
 
+// ----- Payments -----
+
+export const PAYMENT_STATUSES = ["unpaid", "pending", "paid", "refunded"] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
 // ----- Crawl / capture -----
 
 export const CRAWL_STATUSES = ["pending", "success", "failed", "blocked", "timeout", "invalid_url"] as const;

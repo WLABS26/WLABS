@@ -1,5 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { Lead, LeadStatus } from "@/generated/prisma/client";
+import type { Lead, LeadStatus, PaymentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/utils";
 import { logActivity } from "@/modules/crm/activity";
@@ -9,6 +9,8 @@ const DEFAULT_PAGE_SIZE = 20;
 
 export interface ListLeadsFilters {
   status?: LeadStatus | LeadStatus[];
+  statusNotIn?: LeadStatus[];
+  paymentStatus?: PaymentStatus | PaymentStatus[];
   industry?: string;
   search?: string;
   page?: number;
@@ -34,8 +36,15 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<ListLea
 
   const where: Prisma.LeadWhereInput = {};
 
-  if (filters.status) {
-    where.status = Array.isArray(filters.status) ? { in: filters.status } : filters.status;
+  if (filters.status || filters.statusNotIn) {
+    where.status = {
+      ...(filters.status ? (Array.isArray(filters.status) ? { in: filters.status } : { equals: filters.status }) : {}),
+      ...(filters.statusNotIn ? { notIn: filters.statusNotIn } : {}),
+    };
+  }
+
+  if (filters.paymentStatus) {
+    where.paymentStatus = Array.isArray(filters.paymentStatus) ? { in: filters.paymentStatus } : filters.paymentStatus;
   }
 
   if (filters.industry) {
@@ -101,6 +110,15 @@ export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   }
 
   await logActivity(leadId, "status_changed", `Status changed to "${status.replace(/_/g, " ")}".`, metadata);
+  return lead;
+}
+
+/** Update a lead's payment status and record it on the activity timeline. */
+export async function updateLeadPaymentStatus(leadId: string, paymentStatus: PaymentStatus) {
+  const lead = await prisma.lead.update({ where: { id: leadId }, data: { paymentStatus } });
+  await logActivity(leadId, "payment_status_changed", `Payment status changed to "${paymentStatus.replace(/_/g, " ")}".`, {
+    paymentStatus,
+  });
   return lead;
 }
 

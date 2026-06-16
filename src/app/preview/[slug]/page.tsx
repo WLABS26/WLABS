@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 interface PreviewPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; payment?: string }>;
 }
 
 export async function generateMetadata({ params }: PreviewPageProps): Promise<Metadata> {
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PreviewPageProps): Promise<Me
 
 export default async function PreviewPage({ params, searchParams }: PreviewPageProps) {
   const { slug } = await params;
-  const { token } = await searchParams;
+  const { token, payment } = await searchParams;
   const preview = await getPreviewBySlug(slug);
 
   if (!preview) notFound();
@@ -53,6 +53,8 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   };
   const audit = preview.lead.audits[0];
   const gradient = `linear-gradient(135deg, ${theme.from}, ${theme.to})`;
+  const checkoutHref = `/api/checkout/${preview.slug}${token ? `?token=${token}` : ""}`;
+  const isPaid = preview.lead.paymentStatus === "paid";
 
   return (
     <div className="min-h-screen bg-white text-slate-900" style={{ fontFamily: theme.fontFamily ? `${theme.fontFamily}, sans-serif` : undefined }}>
@@ -67,12 +69,19 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
             </span>
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={`${BRAND.contactEmail ? `mailto:${BRAND.contactEmail}` : "#"}?subject=Claim my website: ${encodeURIComponent(content.meta.businessName)}`}
-              className="rounded-full bg-brand-cyan px-4 py-1.5 text-sm font-semibold text-brand-navy hover:opacity-90"
-            >
-              Claim this website
-            </a>
+            {isPaid ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-4 py-1.5 text-sm font-semibold text-emerald-300">
+                <CheckCircle2 className="size-4" />
+                Payment received
+              </span>
+            ) : (
+              <a
+                href={checkoutHref}
+                className="rounded-full bg-brand-cyan px-4 py-1.5 text-sm font-semibold text-brand-navy hover:opacity-90"
+              >
+                Claim this website
+              </a>
+            )}
             <a
               href="#book"
               className="rounded-full border border-white/30 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/10"
@@ -88,6 +97,23 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
           </div>
         </div>
       </div>
+
+      {/* Payment status banner */}
+      {payment === "success" && (
+        <div className="bg-emerald-500 text-emerald-950">
+          <div className="mx-auto max-w-6xl px-4 py-3 text-center text-sm font-medium">
+            Payment received — thanks! We&apos;ll be in touch within {PRICING.mvp.turnaround.toLowerCase()} to kick off
+            your redesign.
+          </div>
+        </div>
+      )}
+      {payment === "cancelled" && (
+        <div className="bg-amber-200 text-amber-900">
+          <div className="mx-auto max-w-6xl px-4 py-3 text-center text-sm font-medium">
+            Checkout was cancelled — no payment was made. Ready whenever you are.
+          </div>
+        </div>
+      )}
 
       {/* Mock site header */}
       <header className="border-b border-slate-100">
@@ -287,13 +313,20 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
           <h2 className="text-3xl font-bold">{content.finalCta.heading}</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/90">{content.finalCta.subheading}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <a
-              href={`mailto:${BRAND.contactEmail}?subject=Claim my website: ${encodeURIComponent(content.meta.businessName)}`}
-              className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-slate-900 hover:bg-white/90"
-            >
-              Claim this website — {PRICING.mvp.currency === "EUR" ? "€" : ""}
-              {PRICING.mvp.price} fixed
-            </a>
+            {isPaid ? (
+              <span className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-slate-900">
+                <CheckCircle2 className="size-4 text-emerald-500" />
+                Payment received — we&apos;re on it
+              </span>
+            ) : (
+              <a
+                href={checkoutHref}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-slate-900 hover:bg-white/90"
+              >
+                Claim this website — {PRICING.mvp.currency === "EUR" ? "€" : ""}
+                {PRICING.mvp.price} fixed
+              </a>
+            )}
             <a
               href={`mailto:${BRAND.contactEmail}?subject=Book a call: ${encodeURIComponent(content.meta.businessName)}`}
               className="inline-flex items-center gap-2 rounded-full border border-white/40 px-6 py-3 font-semibold text-white hover:bg-white/10"

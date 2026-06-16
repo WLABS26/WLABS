@@ -144,6 +144,14 @@ enum DiscoveryRunStatus {
   failed
 }
 
+/// Stripe payment status for a Lead's fixed-price MVP checkout.
+enum PaymentStatus {
+  unpaid
+  pending
+  paid
+  refunded
+}
+
 // =========================================================
 // Core CRM models
 // =========================================================
@@ -175,6 +183,10 @@ model Lead {
   auditScore          Int?
   doNotContact        Boolean            @default(false)
 
+  paymentStatus           PaymentStatus @default(unpaid)
+  stripeCustomerId        String?
+  stripeCheckoutSessionId String?       @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -193,6 +205,7 @@ model Lead {
   @@index([websiteUrl])
   @@index([contactEmail])
   @@index([qualificationStatus])
+  @@index([paymentStatus])
 }
 
 model WebsiteCapture {

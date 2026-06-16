@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { runLeadPipeline, runPreviewGeneration } from "@/modules/agents";
-import { addLeadNote, updateLeadStatus } from "@/modules/crm/leads";
-import { LEAD_STATUSES, type LeadStatus } from "@/modules/shared/types";
+import { addLeadNote, updateLeadPaymentStatus, updateLeadStatus } from "@/modules/crm/leads";
+import { LEAD_STATUSES, PAYMENT_STATUSES, type LeadStatus, type PaymentStatus } from "@/modules/shared/types";
 
 export interface UpdateStatusState {
   error?: string;
@@ -31,6 +31,37 @@ export async function updateLeadStatusAction(
 
   revalidatePath(`/admin/leads/${slug}`);
   revalidatePath("/admin/leads");
+  revalidatePath("/admin");
+
+  return { success: true };
+}
+
+export interface UpdatePaymentStatusState {
+  error?: string;
+  success?: boolean;
+}
+
+export async function updatePaymentStatusAction(
+  _prevState: UpdatePaymentStatusState | undefined,
+  formData: FormData,
+): Promise<UpdatePaymentStatusState> {
+  const leadId = String(formData.get("leadId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+  const paymentStatus = String(formData.get("paymentStatus") ?? "");
+
+  if (!leadId || !slug) {
+    return { error: "Missing lead reference." };
+  }
+
+  if (!(PAYMENT_STATUSES as readonly string[]).includes(paymentStatus)) {
+    return { error: "Invalid payment status." };
+  }
+
+  await updateLeadPaymentStatus(leadId, paymentStatus as PaymentStatus);
+
+  revalidatePath(`/admin/leads/${slug}`);
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/payments");
   revalidatePath("/admin");
 
   return { success: true };
