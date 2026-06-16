@@ -34,10 +34,11 @@ export default async function HomePage({ params }: HomePageProps) {
   const locale = lang as Locale;
   const dict = await getDictionary(locale);
   const contactHref = `/${locale}/contact`;
+  const processHref = `/${locale}/process`;
 
   return (
     <>
-      <Hero dict={dict.hero} />
+      <Hero dict={dict.hero} contactHref={contactHref} processHref={processHref} />
       <Problem dict={dict.problem} />
       <Solution dict={dict.solution} />
       <Process dict={dict.process} />

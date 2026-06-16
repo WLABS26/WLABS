@@ -18,7 +18,7 @@ interface HeroDict {
   stat3: string;
 }
 
-export function Hero({ dict }: { dict: HeroDict }) {
+export function Hero({ dict, contactHref, processHref }: { dict: HeroDict; contactHref?: string; processHref?: string }) {
   return (
     <section className="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28 lg:pt-32">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 px-6 lg:grid-cols-2 lg:gap-12 lg:px-8">
@@ -38,13 +38,13 @@ export function Hero({ dict }: { dict: HeroDict }) {
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="contact">
+              <Link href={contactHref ?? "/contact"}>
                 {dict.primaryCta}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="process">{dict.secondaryCta}</Link>
+              <Link href={processHref ?? "/process"}>{dict.secondaryCta}</Link>
             </Button>
           </div>
 

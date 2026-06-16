@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+
 import { hasLocale, getDictionary, type Locale } from "@/lib/i18n";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -10,7 +12,7 @@ interface MarketingLayoutProps {
 
 export default async function MarketingLayout({ children, params }: MarketingLayoutProps) {
   const { lang } = await params;
-  if (!hasLocale(lang)) return null;
+  if (!hasLocale(lang)) notFound();
   const locale = lang as Locale;
   const dict = await getDictionary(locale);
 
