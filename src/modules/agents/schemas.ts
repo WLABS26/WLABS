@@ -62,4 +62,7 @@ export const auditResultSchema = z.object({
   bestPracticeComparison: z.string(),
   benchmarkGap: z.string(),
   qualificationStatus: z.enum(["high_opportunity", "medium_opportunity", "low_opportunity", "reject"]),
+  // Optional visual audit results (set when a screenshot is available and vision AI is configured)
+  visualScore: z.number().min(0).max(10).nullable().optional(),
+  visualAuditJson: z.record(z.string(), z.unknown()).nullable().optional(),
 });

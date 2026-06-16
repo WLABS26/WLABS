@@ -15,12 +15,13 @@ import {
 import { BRAND, PRICING } from "@/modules/shared/constants";
 import type { PreviewContent, PreviewTheme } from "@/modules/generator/preview-types";
 import { getPreviewBySlug, recordPreviewView } from "@/modules/generator/preview-store";
+import { WireframePage } from "./wireframe-page";
 
 export const dynamic = "force-dynamic";
 
 interface PreviewPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ token?: string; payment?: string }>;
+  searchParams: Promise<{ token?: string; payment?: string; mode?: string }>;
 }
 
 export async function generateMetadata({ params }: PreviewPageProps): Promise<Metadata> {
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: PreviewPageProps): Promise<Me
 
 export default async function PreviewPage({ params, searchParams }: PreviewPageProps) {
   const { slug } = await params;
-  const { token, payment } = await searchParams;
+  const { token, payment, mode } = await searchParams;
   const preview = await getPreviewBySlug(slug);
 
   if (!preview) notFound();
@@ -43,6 +44,10 @@ export default async function PreviewPage({ params, searchParams }: PreviewPageP
   }
 
   await recordPreviewView(preview.id);
+
+  if (mode === "wireframe") {
+    return <WireframePage preview={preview} />;
+  }
 
   const content = preview.contentJson as unknown as PreviewContent;
   const theme = (preview.themeJson as unknown as PreviewTheme) ?? {

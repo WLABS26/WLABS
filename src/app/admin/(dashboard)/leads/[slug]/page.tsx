@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, Mail, MapPin, Phone, RotateCcw, User, Workflow } from "lucide-react";
+import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, LayoutTemplate, Mail, MapPin, Phone, RotateCcw, User, Workflow } from "lucide-react";
 
 import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge, PaymentStatusBadge } from "@/components/admin/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -235,17 +235,26 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                 <div className="space-y-3">
                   {lead.previews.map((preview) => (
                     <div key={preview.id} className="space-y-2 rounded-lg border border-white/10 p-3">
-                      <a
-                        href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-between gap-2 text-sm transition-colors hover:text-brand-cyan"
-                      >
-                        <span className="flex items-center gap-2 text-white">
+                      <div className="flex items-center justify-between gap-2">
+                        <a
+                          href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 text-sm text-white transition-colors hover:text-brand-cyan"
+                        >
                           <ExternalLink className="size-3.5 text-muted" />
                           /preview/{preview.slug}
-                        </span>
+                        </a>
                         <span className="text-xs text-muted">{preview.viewCount} views</span>
+                      </div>
+                      <a
+                        href={`/preview/${preview.slug}?mode=wireframe${preview.token ? `&token=${preview.token}` : ""}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-brand-cyan"
+                      >
+                        <LayoutTemplate className="size-3.5" />
+                        View wireframe
                       </a>
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={preview.status === "approved" ? "success" : "default"}>{preview.status.replace(/_/g, " ")}</Badge>
@@ -396,6 +405,13 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
               const topIssues = (audit.topIssuesJson ?? []) as string[];
               const quickWins = (audit.quickWinsJson ?? []) as string[];
               const criticalFindings = (audit.criticalFindingsJson ?? []) as string[];
+              const visualAudit = audit.visualAuditJson as {
+                colorHarmony?: string;
+                typography?: string;
+                layoutBalance?: string;
+                ctaVisibility?: string;
+                firstImpressionFeedback?: string;
+              } | null;
               return (
                 <>
                 <Card>
@@ -406,6 +422,11 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                     <div className="flex items-baseline gap-3">
                       <span className="text-4xl font-bold text-white">{audit.overallScore}</span>
                       <span className="text-sm text-muted">/ 100</span>
+                      {audit.visualScore !== null && audit.visualScore !== undefined && (
+                        <span className="rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-xs font-medium text-brand-cyan">
+                          Visual {audit.visualScore}/10
+                        </span>
+                      )}
                       <span className="ml-auto text-sm capitalize text-brand-cyan">
                         {audit.qualificationStatus.replace(/_/g, " ")}
                       </span>
@@ -485,6 +506,40 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                         <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Benchmark gap</p>
                           <p className="text-sm text-white">{audit.benchmarkGap}</p>
+                        </div>
+                      )}
+                      {visualAudit && (
+                        <div className="space-y-2 border-t border-white/10 pt-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted">Visual audit</p>
+                          {visualAudit.firstImpressionFeedback && (
+                            <p className="text-sm italic text-white">&ldquo;{visualAudit.firstImpressionFeedback}&rdquo;</p>
+                          )}
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {visualAudit.colorHarmony && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">Colors</p>
+                                <p className="text-xs text-white">{visualAudit.colorHarmony}</p>
+                              </div>
+                            )}
+                            {visualAudit.typography && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">Typography</p>
+                                <p className="text-xs text-white">{visualAudit.typography}</p>
+                              </div>
+                            )}
+                            {visualAudit.layoutBalance && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">Layout</p>
+                                <p className="text-xs text-white">{visualAudit.layoutBalance}</p>
+                              </div>
+                            )}
+                            {visualAudit.ctaVisibility && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">CTA visibility</p>
+                                <p className="text-xs text-white">{visualAudit.ctaVisibility}</p>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </CardContent>

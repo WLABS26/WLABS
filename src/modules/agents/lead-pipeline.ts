@@ -141,6 +141,7 @@ export async function runLeadPipeline(leadId: string, options: { createdBy?: str
       h1: data.h1,
       extractedText: data.textSnippets.join("\n\n").slice(0, 5000) || null,
       extractedDataJson: data as unknown as Prisma.InputJsonValue,
+      desktopScreenshotUrl: crawl.output.screenshotUrl ?? null,
     },
   });
   // Backfill missing contact details from the crawl (homepage and/or
@@ -183,6 +184,7 @@ export async function runLeadPipeline(leadId: string, options: { createdBy?: str
       city: lead.city,
       hasContact: Boolean(lead.contactEmail || lead.contactPhone),
       extractedData: data,
+      screenshotUrl: crawl.output.screenshotUrl ?? null,
     },
     stepCtx,
   );
@@ -208,6 +210,8 @@ export async function runLeadPipeline(leadId: string, options: { createdBy?: str
       bestPracticeComparison: a.bestPracticeComparison,
       benchmarkGap: a.benchmarkGap,
       qualificationStatus: a.qualificationStatus,
+      visualScore: a.visualScore ?? null,
+      visualAuditJson: a.visualAuditJson ? (a.visualAuditJson as unknown as Prisma.InputJsonValue) : undefined,
     },
   });
   await prisma.lead.update({

@@ -152,6 +152,22 @@ enum PaymentStatus {
   refunded
 }
 
+/// Social media platforms for WLABS brand content.
+enum SocialPlatform {
+  instagram
+  linkedin
+}
+
+/// Lifecycle status of a SocialPost.
+enum SocialPostStatus {
+  draft
+  needs_review
+  approved
+  scheduled
+  posted
+  failed
+}
+
 // =========================================================
 // Core CRM models
 // =========================================================
@@ -255,6 +271,11 @@ model Audit {
   bestPracticeComparison String?
   /// Qualitative gap vs. market benchmarks.
   benchmarkGap           String?
+
+  /// Visual design quality score from Claude Vision (0-10). Null when no screenshot available.
+  visualScore     Int?
+  /// Full visual audit output from Claude Vision (colorHarmony, typography, etc.).
+  visualAuditJson Json?
 
   qualificationStatus OpportunityLevel
 
@@ -493,4 +514,34 @@ model DiscoveryRun {
   completedAt DateTime?
 
   @@index([createdAt])
+}
+
+// =========================================================
+// WLABS brand social media content
+// =========================================================
+
+/// A generated or scheduled social post for WLABS's own Instagram / LinkedIn accounts.
+model SocialPost {
+  id       String         @id @default(cuid())
+  platform SocialPlatform
+  postType String
+
+  caption     String          @db.Text
+  hashtags    String[]
+  imageUrl    String?
+  imagePrompt String?         @db.Text
+
+  status       SocialPostStatus @default(draft)
+  scheduledFor DateTime?
+  postedAt     DateTime?
+  externalId   String?
+  failureReason String?
+
+  workflowRunId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([platform, status])
+  @@index([scheduledFor])
 }

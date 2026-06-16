@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Compass, CreditCard, Eye, Inbox, LayoutDashboard, LogOut, Mail, Menu, Users, Workflow } from "lucide-react";
+import { BarChart3, Compass, CreditCard, Eye, Inbox, LayoutDashboard, LogOut, Mail, Menu, Share2, Users, Workflow } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/layout/logo";
@@ -17,6 +17,7 @@ const ADMIN_NAV_LINKS = [
   { label: "Leads", href: "/admin/leads", icon: Users },
   { label: "Previews", href: "/admin/previews", icon: Eye },
   { label: "Emails", href: "/admin/emails", icon: Mail },
+  { label: "Social", href: "/admin/social", icon: Share2 },
   { label: "Review queue", href: "/admin/review", icon: Inbox },
   { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Workflows", href: "/admin/workflows", icon: Workflow },

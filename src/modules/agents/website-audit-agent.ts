@@ -3,15 +3,18 @@
  *
  * Wraps the deterministic audit engine (audit-engine/heuristics.ts) in the
  * agent contract: validated input in, validated 100-point audit out. The
- * scoring itself is signal-based and repeatable - the same site always yields
- * the same score. When a real AI provider is configured, a critique layer
- * sharpens the qualitative findings (criticalFindings/bestPracticeComparison/
- * benchmarkGap) without ever touching the score, category breakdown, or
- * qualification status - the template critique is a guaranteed fallback.
+ * scoring itself is signal-based and repeatable — the same site always yields
+ * the same score. When a real AI provider is configured:
+ *
+ * 1. A text critique layer sharpens criticalFindings/bestPracticeComparison/
+ *    benchmarkGap (template critique is the guaranteed fallback).
+ * 2. If a screenshot URL is provided, a visual audit via Claude/GPT-4o Vision
+ *    appends visual findings and sets visualScore (0–10).
  */
 import { z } from "zod";
 
 import { generateStructured } from "@/lib/ai/generate";
+import { generateWithVision } from "@/lib/ai/vision";
 import { isMockProvider } from "@/lib/ai/provider";
 import { runAudit } from "@/modules/audit-engine/heuristics";
 import { Agent } from "./base-agent";
@@ -24,16 +27,26 @@ const inputSchema = z.object({
   city: z.string().nullable(),
   hasContact: z.boolean(),
   extractedData: extractedWebsiteDataSchema,
+  screenshotUrl: z.string().nullable().optional(),
 });
 
 export type WebsiteAuditInput = z.infer<typeof inputSchema>;
 export type WebsiteAuditOutput = z.infer<typeof auditResultSchema>;
 
-/** Subset of the audit that an AI provider may sharpen into a harsher, more specific critique. */
 const aiCritiqueSchema = z.object({
   criticalFindings: z.array(z.string()).min(3).max(5),
   bestPracticeComparison: z.string(),
   benchmarkGap: z.string(),
+});
+
+const visualAuditSchema = z.object({
+  visualScore: z.number().min(0).max(10),
+  colorHarmony: z.string(),
+  typography: z.string(),
+  layoutBalance: z.string(),
+  ctaVisibility: z.string(),
+  firstImpressionFeedback: z.string(),
+  criticalVisualIssues: z.array(z.string()).max(4),
 });
 
 const AI_SYSTEM_PROMPT =
@@ -45,6 +58,13 @@ const AI_SYSTEM_PROMPT =
   "structure, copy, and signals given. Do not invent facts, statistics, awards, or claims about this " +
   "specific business that weren't given to you. Respond with ONLY a JSON object matching the shape shown " +
   "- no markdown, no commentary, no code fences.";
+
+const VISUAL_AUDIT_SYSTEM_PROMPT =
+  "You are a senior UI/UX designer reviewing a screenshot of an SMB website. " +
+  "Your job is to identify visual/aesthetic problems that hurt conversion, brand credibility, or user experience. " +
+  "Be specific and honest — don't soften your critique. Focus on what a first-time visitor would feel. " +
+  "Rate the overall visual quality on a 0-10 scale (5 = mediocre average SMB site, 8+ = genuinely good). " +
+  "Respond with ONLY a JSON object — no markdown, no preamble:";
 
 function buildAiPrompt(input: WebsiteAuditInput, draft: WebsiteAuditOutput): string {
   const d = input.extractedData;
@@ -95,19 +115,45 @@ export class WebsiteAuditAgent extends Agent<WebsiteAuditInput, WebsiteAuditOutp
 
     if (isMockProvider()) return draft;
 
+    // --- Text critique ---
     const aiCritique = await generateStructured({
       system: AI_SYSTEM_PROMPT,
       prompt: buildAiPrompt(input, draft),
       schema: aiCritiqueSchema,
     });
 
-    if (!aiCritique) {
-      ctx.log("warn", "AI audit critique unavailable, using template output");
-      return draft;
+    const withCritique: WebsiteAuditOutput = aiCritique
+      ? (() => { ctx.log("info", "Enhanced audit critique with AI"); return { ...draft, ...aiCritique }; })()
+      : (() => { ctx.log("warn", "AI audit critique unavailable, using template output"); return draft; })();
+
+    // --- Visual audit (requires screenshot) ---
+    if (!input.screenshotUrl) return withCritique;
+
+    const visualAudit = await generateWithVision({
+      system: VISUAL_AUDIT_SYSTEM_PROMPT,
+      prompt: `Business: ${input.businessName}, Industry: ${input.industryLabel}.\n\nRate and describe the visual quality of this website homepage screenshot. Be specific about what you see.`,
+      imageUrl: input.screenshotUrl,
+      schema: visualAuditSchema,
+    });
+
+    if (!visualAudit) {
+      ctx.log("warn", "Visual audit unavailable");
+      return withCritique;
     }
 
-    ctx.log("info", "Enhanced audit critique with AI");
-    return { ...draft, ...aiCritique };
+    ctx.log("info", `Visual audit complete — score ${visualAudit.visualScore}/10`);
+
+    // Merge visual findings: append visual issues to criticalFindings, prepend visual feedback to bestPracticeComparison
+    const mergedCriticalFindings = [...withCritique.criticalFindings, ...visualAudit.criticalVisualIssues].slice(0, 7);
+    const mergedComparison = `${visualAudit.firstImpressionFeedback} ${withCritique.bestPracticeComparison}`.trim();
+
+    return {
+      ...withCritique,
+      criticalFindings: mergedCriticalFindings,
+      bestPracticeComparison: mergedComparison,
+      visualScore: visualAudit.visualScore,
+      visualAuditJson: visualAudit as Record<string, unknown>,
+    };
   }
 }
 
