@@ -1,10 +1,13 @@
 /**
  * Wireframe Generation Agent.
  *
- * Generates a self-contained interactive HTML wireframe for a prospect —
- * their first look at what their redesigned site could look like. Uses
- * the top-tier Opus model for maximum quality. Falls back to a structured
- * template in mock mode. Never invents testimonials, awards, or statistics.
+ * Generates a self-contained interactive HTML wireframe for a prospect — their
+ * first look at their redesigned site. Quality benchmark: the Claude Design
+ * "Dr. Becker" reference (warm sophisticated palette, paired premium fonts,
+ * embedded photography, floating bobbing cards, scroll-reveal, dark contrast
+ * bands, gradient CTA). Uses the top-tier Opus model; falls back to a
+ * benchmark-quality template in mock mode. Never fabricates specific reviews,
+ * ratings, awards, or statistics.
  */
 import { z } from "zod";
 
@@ -14,6 +17,7 @@ import { Agent } from "./base-agent";
 const inputSchema = z.object({
   businessName: z.string(),
   industry: z.string(),
+  industryLabel: z.string(),
   city: z.string().nullable(),
   country: z.string().nullable(),
   contactPhone: z.string().nullable(),
@@ -26,7 +30,9 @@ const inputSchema = z.object({
   extractedH1: z.string().nullable(),
   extractedMetaDescription: z.string().nullable(),
   extractedText: z.string().nullable(),
-  imageUrls: z.array(z.string()).default([]),
+  heroImageUrl: z.string(),
+  philosophyImageUrl: z.string(),
+  galleryImages: z.array(z.string()).default([]),
   brandColors: z.array(z.string()).default([]),
   addressHint: z.string().nullable(),
   language: z.enum(["en", "de"]).default("en"),
@@ -39,631 +45,652 @@ const outputSchema = z.object({
 export type WireframeInput = z.infer<typeof inputSchema>;
 export type WireframeOutput = z.infer<typeof outputSchema>;
 
-const WIREFRAME_SYSTEM_PROMPT = `You are an elite frontend developer and UI/UX designer at a premium web agency. Your task: generate a COMPLETE, self-contained interactive HTML wireframe that shows a prospect what their redesigned website could look like.
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-industry design palettes (Dr. Becker-grade sophistication)
+// ─────────────────────────────────────────────────────────────────────────────
 
-This is a high-stakes sales tool — it must be visually stunning, professional, and tailored to the specific business. The quality bar is an Awwwards Daily Award or CSS Design Awards finalist.
+interface Palette {
+  primary: string;
+  primaryDark: string;
+  deep: string;
+  deepEnd: string;
+  tint: string;
+  tintText: string;
+  paper: string;
+  paperAlt: string;
+  ink: string;
+  body: string;
+  muted: string;
+  border: string;
+  accent: string;
+  onDark: string;
+  onDarkMuted: string;
+  fontHead: string;
+  fontBody: string;
+  fontQuery: string;
+}
+
+const PALETTES: Record<string, Palette> = {
+  // Calm, trustworthy greens — medical / dental / physio (the Dr. Becker family)
+  sage: {
+    primary: "#3F5C4E", primaryDark: "#34503F", deep: "#22312A", deepEnd: "#2E4339",
+    tint: "#EAF1EC", tintText: "#3F5C4E", paper: "#FBFAF7", paperAlt: "#F4F2EB",
+    ink: "#1E2B24", body: "#5C5A54", muted: "#8A8780", border: "#ECEAE3", accent: "#E0A92E",
+    onDark: "#C9D2CB", onDarkMuted: "#8FBBA4",
+    fontHead: "Schibsted Grotesk", fontBody: "Hanken Grotesk",
+    fontQuery: "family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700",
+  },
+  // Elegant navy + cream — law / accounting / finance
+  navy: {
+    primary: "#1A2C50", primaryDark: "#14223F", deep: "#15233F", deepEnd: "#1E325A",
+    tint: "#EBEEF4", tintText: "#1A2C50", paper: "#FCFBF8", paperAlt: "#F3F1EA",
+    ink: "#161E2E", body: "#54596A", muted: "#8A8C99", border: "#E8E6DF", accent: "#C0A062",
+    onDark: "#CDD4E0", onDarkMuted: "#93A0BC",
+    fontHead: "Cormorant Garamond", fontBody: "Inter",
+    fontQuery: "family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700",
+  },
+  // Confident trust-blue — plumber / electrician
+  azure: {
+    primary: "#15609B", primaryDark: "#114E7E", deep: "#10243A", deepEnd: "#163850",
+    tint: "#E4EFF6", tintText: "#15609B", paper: "#FAFBFC", paperAlt: "#EFF3F6",
+    ink: "#13202C", body: "#51606C", muted: "#86919B", border: "#E5EAEE", accent: "#E8821E",
+    onDark: "#C4D2DD", onDarkMuted: "#7E9DB4",
+    fontHead: "Barlow Semi Condensed", fontBody: "Barlow",
+    fontQuery: "family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700",
+  },
+  // Warm burgundy + cream — restaurant / food
+  wine: {
+    primary: "#7B2230", primaryDark: "#641A26", deep: "#2C1518", deepEnd: "#43211F",
+    tint: "#F4E9E5", tintText: "#7B2230", paper: "#FCF8F4", paperAlt: "#F3EBE2",
+    ink: "#2A1A18", body: "#5F5048", muted: "#917F74", border: "#ECE3DA", accent: "#C8893B",
+    onDark: "#E0CFC4", onDarkMuted: "#B89683",
+    fontHead: "Playfair Display", fontBody: "Lato",
+    fontQuery: "family=Playfair+Display:wght@500;600;700;800&family=Lato:wght@400;700",
+  },
+  // Soft rose — beauty / aesthetic clinic
+  rose: {
+    primary: "#A8456A", primaryDark: "#8E3757", deep: "#2E1822", deepEnd: "#45222F",
+    tint: "#F7E9EE", tintText: "#A8456A", paper: "#FFF9FB", paperAlt: "#F8EEF1",
+    ink: "#2B1922", body: "#665159", muted: "#9C8189", border: "#F0E2E6", accent: "#C9A05A",
+    onDark: "#E6D2DA", onDarkMuted: "#C195A6",
+    fontHead: "Cormorant Garamond", fontBody: "Poppins",
+    fontQuery: "family=Cormorant+Garamond:wght@500;600;700&family=Poppins:wght@300;400;500;600;700",
+  },
+  // Deep violet / charcoal — real estate / premium
+  violet: {
+    primary: "#3A2C63", primaryDark: "#2E2250", deep: "#1A1433", deepEnd: "#2A2150",
+    tint: "#ECE8F4", tintText: "#3A2C63", paper: "#FCFBFD", paperAlt: "#F2EFF6",
+    ink: "#191228", body: "#544E66", muted: "#8A8499", border: "#E8E4EE", accent: "#C2A35A",
+    onDark: "#D2CCE2", onDarkMuted: "#9990B6",
+    fontHead: "Raleway", fontBody: "Hanken Grotesk",
+    fontQuery: "family=Raleway:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700",
+  },
+  // Grounded terracotta / amber — construction
+  clay: {
+    primary: "#B65A2E", primaryDark: "#984924", deep: "#2A1D16", deepEnd: "#42301F",
+    tint: "#F5EAE2", tintText: "#B65A2E", paper: "#FBF9F6", paperAlt: "#F2ECE4",
+    ink: "#241A14", body: "#5C5249", muted: "#8E8077", border: "#EAE3DA", accent: "#3F6F52",
+    onDark: "#DACBBE", onDarkMuted: "#B0937E",
+    fontHead: "Sora", fontBody: "Inter",
+    fontQuery: "family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700",
+  },
+  // Refined neutral blue-grey — general / other
+  slate: {
+    primary: "#2D4A63", primaryDark: "#243C51", deep: "#19242E", deepEnd: "#243744",
+    tint: "#E8EEF2", tintText: "#2D4A63", paper: "#FBFBFA", paperAlt: "#F0F2F3",
+    ink: "#16212B", body: "#525C66", muted: "#869099", border: "#E7EAEC", accent: "#D08A2C",
+    onDark: "#CAD4DC", onDarkMuted: "#869AAA",
+    fontHead: "Schibsted Grotesk", fontBody: "Inter",
+    fontQuery: "family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700",
+  },
+};
+
+const INDUSTRY_PALETTE: Record<string, keyof typeof PALETTES> = {
+  dentist: "sage",
+  physiotherapist: "sage",
+  lawyer: "navy",
+  accountant: "navy",
+  plumber: "azure",
+  electrician: "azure",
+  restaurant: "wine",
+  beauty_clinic: "rose",
+  real_estate: "violet",
+  construction: "clay",
+  other: "slate",
+};
+
+function getPalette(industry: string): Palette {
+  return PALETTES[INDUSTRY_PALETTE[industry] ?? "slate"];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Opus system prompt — the Dr. Becker design language, baked in
+// ─────────────────────────────────────────────────────────────────────────────
+
+const WIREFRAME_SYSTEM_PROMPT = `You are an elite frontend designer-developer at a top web studio. You produce a single, complete, self-contained interactive HTML wireframe that shows a local business what their redesigned website could look like. This is a high-stakes sales artifact: the quality bar is an Awwwards / CSS Design Awards finalist, and it must visually rival a bespoke Claude Design handoff.
 
 ━━━ OUTPUT FORMAT ━━━
-Return ONLY the raw HTML document. No markdown. No code fences. No explanation. Start with <!DOCTYPE html> and end with </html>.
+Return ONLY the raw HTML document. No markdown, no code fences, no commentary. Start with <!DOCTYPE html> and end with </html>.
 
-━━━ TECHNICAL REQUIREMENTS ━━━
-• Single file: ALL CSS inside <style> tags, ALL JS inside <script> tags
-• External dependency allowed: Google Fonts only (via <link> in <head>)
-• Sticky transparent nav → gains solid background + box-shadow on scroll (JS scroll listener toggling a CSS class)
-• Hamburger menu toggle for mobile — slides in a full-overlay nav panel
-• Scroll-reveal: IntersectionObserver adds .visible class to .reveal elements; CSS handles opacity/translateY animation
-• Hover effects on cards: transform: translateY(-4px), box-shadow depth transition
-• Smooth scroll for all anchor href="#section" links (scrollIntoView behavior: 'smooth')
-• WLABS attribution: small fixed badge in bottom-right, non-obtrusive, dismissible via onclick
+━━━ THE REFERENCE STANDARD (study this — match its sophistication) ━━━
+The gold standard is a calm, content-rich, multi-section marketing page with ALL styling inline. Exact design tokens you must work at this level of refinement:
 
-━━━ INDUSTRY DESIGN SYSTEMS ━━━
-Choose the palette and typography that fits the industry. Adapt if brand colors are provided.
+• Warm, non-generic page background (never pure #FFF or #FAFAFA — use a warm paper tone like #FBFAF7 or the palette's paper value).
+• Two paired Google Fonts: a Grotesk/Display for headings (tight letter-spacing −.02em to −.025em on large headings) + a clean grotesk for body.
+• Type scale: Hero H1 56–60px / line-height 1.04 / weight 700; Section H2 38–40px / −.02em; Card H3 21–22px; stat numbers 26–27px; body 15–19px / line-height 1.6–1.7; eyebrow labels 13px / weight 600 / letter-spacing .16em / UPPERCASE / colored.
+• Layout: max-width 1200px; side padding 32px; section vertical rhythm 80–88px; card padding 28–36px; grid gaps 16–24px.
+• Radius: pills/buttons 999px; cards 18–22px; feature images / CTA bands 24–28px; icon chips 12–15px.
+• Shadows (soft, directional): card hover 0 26px 50px -28px rgba(30,40,35,.35); hero image 0 40px 80px -40px rgba(40,60,50,.5); floating cards 0 18-22px 40-46px -16px; primary button 0 12px 28px -10px.
+• Scroll-reveal: IntersectionObserver adds reveal (opacity 0→1 + translateY(28px)→0, transition .8s cubic-bezier(.22,1,.36,1), threshold 0.1, once each).
+• Sticky translucent nav (backdrop-filter blur(12px) saturate(140%)), 1px bottom border, gains a soft shadow after 12px scroll.
+• Floating cards over the hero image that gently bob (@keyframes floaty translateY ±9px, 5–6s infinite).
+• Hover lifts on cards (translateY(-4px)); buttons darken on hover.
 
-• Medical / Dental: Deep teal #1B6CA8 primary, clean white bg, DM Sans + DM Serif Display
-• Physical therapy / Wellness: Forest green #2E7D32, warm white #FAFEF5, Lato + Merriweather
-• Law / Professional services: Navy #1A237E, cream #FFFEF5, Cormorant Garamond + Inter
-• Trades (plumber / electrician / construction): Trust blue #1565C0 or vivid orange #E65100, near-black bg for electrician, Barlow Condensed + Barlow
-• Real estate / Premium: Deep violet #1A0533 or gunmetal, ivory, ultra-thin spacing, Raleway + Source Serif 4
-• Restaurant / Food: Warm burgundy #7B1818 or terracotta, warm cream, Playfair Display + Lato
-• Beauty / Aesthetic clinic: Rose #AD1457 on soft white #FFF8FB, Cormorant Garamond + Poppins
-• Accounting / Finance: Professional green #1B5E20 or midnight blue, Source Sans 3
-• General: Deep blue #1565C0 on white, Inter all weights
+━━━ REQUIRED SECTIONS (top → bottom) ━━━
+1. NAV — sticky, translucent: left = rounded square logo mark (inline SVG glyph fitting the industry) + wordmark with a small uppercase sublabel; center = 4 anchor links (active link gets a tint pill); right = phone link (with phone SVG) + primary pill CTA. Add a hamburger that opens a full-screen overlay menu below 768px.
+2. HERO — two-column grid (≈1.05fr / .95fr). LEFT: a tint status/eyebrow pill, a 3-line display H1, a 1–2 sentence subcopy, two CTAs (primary solid pill + outline pill), and a stat row (3 stats separated by thin dividers — use ONLY verifiable/neutral stats like years pattern, city, "lokal"; never invent ratings/counts). RIGHT: a 4:5 hero photo in a 28px-radius frame with the big soft shadow, plus TWO floating bobbing cards overlapping it (e.g. a small feature card and a info chip) — but the floating cards must NOT state fabricated review counts or ratings.
+3. TRUST STRIP — white/paper band, 1px top+bottom border, 4 icon+label items (each: tint rounded-square chip with an inline SVG + bold label + muted sublabel). Generic verifiable virtues only.
+4. FOCUS / SCHWERPUNKTE — centered eyebrow + H2, then 3 cards with a colored rounded-square SVG icon, H3, description, and a "Learn more →" link. Hover lift.
+5. SERVICES PREVIEW — a responsive grid of 6 tint list-chips (label + arrow), linking to #services.
+6. PHILOSOPHY / ABOUT — two-column: one side an image (use the philosophy photo; you MAY apply an organic morphing border-radius via @keyframes blobPulse), other side eyebrow + H2 + two paragraphs + an outline CTA.
+7. GALLERY — a 3-up grid of real photos (use the provided gallery image URLs) with rounded corners and a subtle hover zoom.
+8. HOURS + LOCATION — a DARK band (deep palette color), two columns: left = hours/availability with an "open now"-style status pill and weekday rows (today's row tinted); right = a styled map panel (if an address is given, embed <iframe src="https://maps.google.com/maps?q=ADDRESS&output=embed">) + two small info cards (parking / transit / contact).
+9. REVIEWS — centered header + 3 testimonial cards. CRITICAL: you must NOT fabricate real customer quotes, names, or star ratings/platforms. Instead render this as an honest placeholder: a small caption like "Platzhalter — hier erscheinen Ihre echten Bewertungen" (DE) / "Placeholder — your real reviews will appear here" (EN), and 3 skeleton review cards (star outline, illustrative sample sentiment in muted/italic, generic initials avatar). It must look designed, not fake.
+10. CTA BAND — a rounded-28px gradient panel (primary → deepEnd) with a decorative translucent circle, a headline, subcopy, and two CTAs (solid white pill + outline phone pill).
+11. FOOTER — dark band, brand blurb + 3 columns (navigation, contact, hours) + bottom bar with © year and legal links.
 
-━━━ PAGE STRUCTURE ━━━
-Build a single-page scrolling document with anchor navigation. For businesses with multi-page sites, simulate the full customer journey in sections. Include ALL of the following:
-
-1. NAV — Fixed top: logo text (large, styled), 4–5 section anchor links, primary CTA button
-2. HERO — Full-viewport height. If image URLs provided: use first as CSS background-image with dark overlay + parallax hint. If not: rich CSS gradient. Large display H1 (font-size: clamp(48px, 8vw, 96px)), 1–2 line subtext, two CTA buttons, trust tagline below
-3. TRUST STRIP — Horizontal row of 3–4 credibility signals. Only state verifiable generic facts (licensed, insured, local, fast response) — NEVER invent specific numbers
-4. SERVICES — 3–6 cards in responsive grid. If image URLs provided beyond hero: use for card backgrounds. Otherwise: styled gradient placeholder boxes (height: 160px). Card: image area, title, 1-line outcome-focused description, "→ Mehr erfahren" or "→ Learn more" link
-5. HOW IT WORKS — Numbered process steps (3–4). Large outlined step number + title + description
-6. ABOUT / WHY US — Business differentiators. Keep generic and honest if no specific data provided
-7. CONTACT — Left: contact details (phone as <a href="tel:">, email as <a href="mailto:">, address if given, Google Maps embed if address given: <iframe src="https://maps.google.com/maps?q=ENCODED_ADDRESS&output=embed" loading="lazy">). Right: contact form skeleton (Name, Email/Phone, Message, Submit button — form action="#", no real submit needed)
-8. FOOTER — Logo text, tagline, nav links, contact info, © YEAR businessName. All Rights Reserved.
+━━━ IMAGES ━━━
+Use the EXACT image URLs provided in the prompt for hero, philosophy, and gallery. Embed as <img> with object-fit:cover. EVERY <img> MUST include this exact onerror so a broken image degrades to its gradient frame, never a broken icon:
+onerror="this.style.display='none'"
+…and its parent container must already have a palette gradient background behind the image.
 
 ━━━ ABSOLUTE RULES ━━━
-1. NEVER invent testimonials, customer reviews, star ratings, or case studies with results
-2. NEVER invent specific numbers ("500+ clients", "15 years experience") unless they appear verbatim in the provided website content
-3. NEVER invent awards, certifications, or professional memberships
-4. NEVER reference the audit score or WLABS analysis in the customer-facing wireframe content
-5. Image URLs provided → embed as <img src="URL" loading="lazy" alt="..."> or CSS background-image
-6. No images available → use gradient placeholder divs with aria-label describing the intended image
-7. Contact form is visual skeleton only — no backend, just visual
-8. Write all copy in the language specified (German or English). Use formal "Sie" for German.
-
-━━━ RESPONSIVE ━━━
-Mobile-first. Grid layouts collapse to 1 column below 640px. Font sizes use clamp(). Nav collapses to hamburger below 768px. Min touch target 44px for all buttons.`;
+1. NEVER fabricate specific testimonials, named reviews, star ratings, review counts, awards, certifications, or statistics. The reviews section is an explicit honest placeholder (see #9). Floating hero cards never show fake ratings/counts.
+2. Do not reference the audit score, "WLABS", or the analysis anywhere in the customer-facing content (one small dismissible "Concept by WLABS" badge fixed bottom-right is the only exception).
+3. Use the prospect's real name, city, phone, email, and address where provided. Use tel:/mailto: links.
+4. All copy in the requested language. German uses formal "Sie".
+5. Single file: all CSS in <style>, all JS in <script>, only Google Fonts as an external link. Mobile-first responsive: grids collapse to 1 column under 720px; nav → hamburger under 768px; clamp() font sizes; 44px min touch targets.
+6. Inline SVG icons only (no icon libraries/emojis as primary icons — small emoji accents in dark info cards are acceptable).`;
 
 function buildWireframePrompt(input: WireframeInput): string {
-  const images = input.imageUrls.slice(0, 8);
+  const p = getPalette(input.industry);
   const lang = input.language === "de" ? "German (formal Sie)" : "English";
+  const brand = input.brandColors.length > 0 ? input.brandColors.join(", ") : "none extracted";
+  const gallery = input.galleryImages.length > 0 ? input.galleryImages.map((g, i) => `  gallery[${i}]: ${g}`).join("\n") : "  (none — reuse hero/philosophy or use tint gradient panels)";
 
-  return `Generate a complete interactive HTML wireframe for this business. Language for all copy: ${lang}.
+  return `Generate the complete interactive HTML wireframe. Language for ALL copy: ${lang}.
 
-━━━ BUSINESS PROFILE ━━━
-Business Name: ${input.businessName}
-Industry: ${input.industry}
-City: ${input.city ?? "Not specified"}
-Country: ${input.country ?? "Not specified"}
+━━━ BUSINESS ━━━
+Name: ${input.businessName}
+Industry: ${input.industryLabel} (key: ${input.industry})
+City: ${input.city ?? "—"}${input.country ? `, ${input.country}` : ""}
+Phone: ${input.contactPhone ?? "not available"}
+Email: ${input.contactEmail ?? "not available"}
+Address: ${input.addressHint ?? "not available"}
+Current website: ${input.websiteUrl ?? "—"}
 
-━━━ CONTACT DETAILS ━━━
-${input.contactPhone ? `Phone: ${input.contactPhone}` : "Phone: not available"}
-${input.contactEmail ? `Email: ${input.contactEmail}` : "Email: not available"}
-${input.websiteUrl ? `Current website: ${input.websiteUrl}` : ""}
-${input.addressHint ? `Address: ${input.addressHint}` : "Address: not available"}
+━━━ PALETTE TO USE (work at this exact level of refinement) ━━━
+primary ${p.primary} · primaryHover ${p.primaryDark} · darkBand ${p.deep} → ${p.deepEnd}
+tint ${p.tint} (text ${p.tintText}) · paper ${p.paper} · paperAlt ${p.paperAlt}
+ink ${p.ink} · body ${p.body} · muted ${p.muted} · hairline ${p.border} · accent ${p.accent}
+onDark ${p.onDark} · onDarkMuted ${p.onDarkMuted}
+Fonts: "${p.fontHead}" (headings, tight tracking) + "${p.fontBody}" (body).
+Google Fonts link: https://fonts.googleapis.com/css2?${p.fontQuery}&display=swap
+Brand colors extracted from their site (optional nudge): ${brand}
 
-━━━ BRAND HINTS ━━━
-${input.brandColors.length > 0 ? `Extracted brand colors (use as palette hints): ${input.brandColors.join(", ")}` : "No brand colors extracted — use industry-appropriate palette"}
+━━━ IMAGES (embed these EXACT urls; every <img> needs onerror="this.style.display='none'") ━━━
+  hero (4:5): ${input.heroImageUrl}
+  philosophy: ${input.philosophyImageUrl}
+${gallery}
 
-━━━ EXISTING SITE CONTEXT ━━━
-(Use to understand the business, NOT to copy content verbatim)
-${input.extractedTitle ? `Page title: ${input.extractedTitle}` : ""}
-${input.extractedH1 ? `Main heading: ${input.extractedH1}` : ""}
-${input.extractedMetaDescription ? `Meta description: ${input.extractedMetaDescription}` : ""}
-${input.extractedText ? `\nContent excerpt (first ~2000 chars):\n${input.extractedText.slice(0, 2000)}` : "No content extracted"}
+━━━ EXISTING SITE CONTEXT (understand the business; do NOT copy verbatim) ━━━
+Title: ${input.extractedTitle ?? "—"}
+H1: ${input.extractedH1 ?? "—"}
+Meta: ${input.extractedMetaDescription ?? "—"}
+${input.extractedText ? `Excerpt:\n${input.extractedText.slice(0, 1800)}` : "No content extracted."}
 
-━━━ CURRENT SITE PROBLEMS TO FIX ━━━
-(Design the wireframe to address these — but don't mention them in the copy)
-${input.topIssues.length > 0 ? input.topIssues.slice(0, 5).map((i) => `• ${i}`).join("\n") : "No audit data available"}
-${input.criticalFindings.length > 0 ? "\nCritical findings:\n" + input.criticalFindings.slice(0, 3).map((f) => `• ${f}`).join("\n") : ""}
+━━━ PROBLEMS THE REDESIGN SHOULD QUIETLY FIX (don't mention in copy) ━━━
+${input.topIssues.length ? input.topIssues.slice(0, 5).map((i) => `• ${i}`).join("\n") : "—"}
+${input.criticalFindings.length ? input.criticalFindings.slice(0, 3).map((f) => `• ${f}`).join("\n") : ""}
 
-━━━ AVAILABLE IMAGE URLS ━━━
-${images.length > 0 ? images.map((url, i) => `${i + 1}. ${url}`).join("\n") : "None — use CSS gradient placeholders throughout"}
+Produce the full HTML now.`;
+}
 
-Generate the complete HTML document now.`;
+// ─────────────────────────────────────────────────────────────────────────────
+// Mock fallback — benchmark-quality template (used when no AI provider)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function img(src: string, alt: string, extra = ""): string {
+  return `<img src="${src}" alt="${alt}" loading="lazy" onerror="this.style.display='none'" style="width:100%; height:100%; object-fit:cover; ${extra}">`;
 }
 
 function buildMockWireframe(input: WireframeInput): string {
+  const p = getPalette(input.industry);
   const year = new Date().getFullYear();
   const de = input.language === "de";
-  const city = input.city ?? (de ? "Ihrer Region" : "your area");
-  const hasPhone = Boolean(input.contactPhone);
-  const hasEmail = Boolean(input.contactEmail);
-  const hasAddress = Boolean(input.addressHint);
+  const phone = input.contactPhone;
+  const email = input.contactEmail;
+  const addr = input.addressHint;
+  const label = input.industryLabel;
+  const gallery = input.galleryImages.length >= 3 ? input.galleryImages : [input.heroImageUrl, input.philosophyImageUrl, input.heroImageUrl];
 
-  const heroHeadline = de
-    ? `Professionelle Lösungen für ${input.city ?? "Ihre Region"}`
-    : `Professional ${input.industry.replace(/_/g, " ")} services in ${city}`;
+  const nav = de ? ["Start", "Leistungen", "Über uns", "Kontakt"] : ["Home", "Services", "About", "Contact"];
+  const navHref = ["#top", "#services", "#about", "#contact"];
+  const ctaLabel = de ? "Termin anfragen" : "Get in touch";
+  const heroTitle = de ? `Professionell.<br>Persönlich.<br>In ${input.city ?? "Ihrer Nähe"}.` : `Professional.<br>Personal.<br>Local to ${input.city ?? "you"}.`;
   const heroSub = de
-    ? `${input.businessName} steht für Qualität, Zuverlässigkeit und persönlichen Service.`
-    : `${input.businessName} delivers expert service tailored to your needs. Get in touch today.`;
-  const ctaLabel = de ? "Jetzt anfragen" : "Get a free quote";
-  const ctaAlt = de ? "Unsere Leistungen" : "View our services";
+    ? `${input.businessName} bietet hochwertige ${label}-Leistungen — verständlich, zuverlässig und auf Sie persönlich abgestimmt.`
+    : `${input.businessName} delivers high-quality ${label.toLowerCase()} — clear, reliable and built entirely around you.`;
 
-  const navLinks = de
-    ? ["Leistungen", "Ablauf", "Über uns", "Kontakt"]
-    : ["Services", "Process", "About", "Contact"];
-  const navAnchors = ["#services", "#process", "#about", "#contact"];
+  const reviewNote = de ? "Platzhalter — hier erscheinen Ihre echten Bewertungen" : "Placeholder — your real reviews will appear here";
+  const sampleReviews = de
+    ? [
+        "Sehr freundliches Team, kompetente Beratung und ein rundum angenehmer Ablauf von Anfang bis Ende.",
+        "Pünktliche Termine, kurze Wartezeiten und alles wurde verständlich erklärt. Gerne wieder.",
+        "Professionell, zuverlässig und persönlich — genau so wünscht man sich den Service vor Ort.",
+      ]
+    : [
+        "Wonderful team, expert advice, and a smooth, pleasant experience from start to finish.",
+        "On-time appointments, short waits, and everything explained clearly. Highly recommend.",
+        "Professional, reliable and personal — exactly the kind of local service you hope to find.",
+      ];
+
+  const chips = de
+    ? ["Erstberatung", "Beratung vor Ort", "Individuelle Lösungen", "Schneller Service", "Faire Preise", "Nachbetreuung"]
+    : ["Free consultation", "On-site visits", "Tailored solutions", "Fast turnaround", "Fair pricing", "Aftercare"];
 
   return `<!DOCTYPE html>
 <html lang="${input.language}">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${input.businessName} — ${de ? "Website-Konzept von WLABS" : "Website Concept by WLABS"}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --primary: #1565C0;
-      --primary-dark: #0D47A1;
-      --primary-light: #E3F2FD;
-      --bg: #FAFAFA;
-      --surface: #FFFFFF;
-      --text: #0F172A;
-      --muted: #64748B;
-      --border: #E2E8F0;
-      --radius: 14px;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
-      --shadow-lg: 0 10px 30px rgba(0,0,0,0.12);
-    }
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
-    a { color: inherit; text-decoration: none; }
-    img { display: block; max-width: 100%; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${input.businessName} — ${de ? "Website-Konzept" : "Website Concept"}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?${p.fontQuery}&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{ margin:0; background:${p.paper}; color:${p.body}; font-family:'${p.fontBody}',sans-serif; overflow-x:hidden; }
+  a{ text-decoration:none; }
+  h1,h2,h3{ font-family:'${p.fontHead}',serif; color:${p.ink}; margin:0; }
+  .wrap{ max-width:1200px; margin:0 auto; padding:0 32px; }
+  .eyebrow{ font-family:'${p.fontHead}',sans-serif; font-size:13px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:${p.primary}; }
+  .btn{ display:inline-flex; align-items:center; gap:8px; font-size:16px; font-weight:600; padding:15px 28px; border-radius:999px; cursor:pointer; transition:all .25s; }
+  .btn-primary{ background:${p.primary}; color:#fff; box-shadow:0 12px 28px -10px ${p.primary}b3; border:none; }
+  .btn-primary:hover{ background:${p.primaryDark}; transform:translateY(-1px); }
+  .btn-outline{ background:#fff; color:${p.ink}; border:1.5px solid ${p.border}; }
+  .btn-outline:hover{ border-color:${p.primary}; }
+  .reveal{ opacity:0; transform:translateY(28px); transition:opacity .8s cubic-bezier(.22,1,.36,1), transform .8s cubic-bezier(.22,1,.36,1); }
+  .reveal.vis{ opacity:1; transform:none; }
+  section{ position:relative; }
+  @keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-9px);} }
+  @keyframes blobPulse{ 0%,100%{ border-radius:46% 54% 56% 44%/52% 48% 52% 48%;} 50%{ border-radius:54% 46% 44% 56%/48% 54% 46% 52%;} }
 
-    /* WLABS badge */
-    #wlabs-badge {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
-      background: #0F172A; color: #fff; font-size: 11px; font-family: inherit;
-      font-weight: 600; letter-spacing: 0.3px; padding: 10px 16px;
-      border-radius: 24px; cursor: pointer; opacity: 0.92; transition: opacity 0.2s;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.24);
-    }
-    #wlabs-badge:hover { opacity: 1; }
+  /* WLABS badge */
+  #wlabs{ position:fixed; bottom:22px; right:22px; z-index:9999; background:${p.deep}; color:#fff; font-size:11px; font-weight:600; letter-spacing:.3px; padding:9px 15px; border-radius:999px; cursor:pointer; opacity:.9; box-shadow:0 8px 22px -8px rgba(0,0,0,.5); }
+  #wlabs:hover{ opacity:1; }
 
-    /* Nav */
-    #main-nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-      padding: 20px 48px; display: flex; align-items: center; justify-content: space-between;
-      transition: background 0.4s, box-shadow 0.4s, padding 0.3s;
-    }
-    #main-nav.scrolled {
-      background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.08), 0 4px 20px rgba(0,0,0,0.04);
-      padding: 14px 48px;
-    }
-    .nav-logo { font-size: 18px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
-    #main-nav.scrolled .nav-logo { color: var(--text); }
-    .nav-links { display: flex; align-items: center; gap: 8px; }
-    .nav-links a {
-      font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.85);
-      padding: 8px 14px; border-radius: 8px; transition: all 0.2s;
-    }
-    #main-nav.scrolled .nav-links a { color: var(--muted); }
-    .nav-links a:hover { color: #fff; background: rgba(255,255,255,0.12); }
-    #main-nav.scrolled .nav-links a:hover { color: var(--primary); background: var(--primary-light); }
-    .nav-cta {
-      background: var(--primary) !important; color: #fff !important;
-      padding: 10px 20px !important; border-radius: 8px !important; font-weight: 600 !important;
-      box-shadow: 0 2px 8px rgba(21,101,192,0.3);
-    }
-    .nav-cta:hover { background: var(--primary-dark) !important; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(21,101,192,0.4) !important; }
-    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 8px; border: none; background: none; }
-    .hamburger span { width: 22px; height: 2px; background: #fff; border-radius: 2px; transition: all 0.3s; display: block; }
-    #main-nav.scrolled .hamburger span { background: var(--text); }
-    .mobile-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.96);
-      z-index: 199; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-    }
-    .mobile-overlay.open { display: flex; }
-    .mobile-overlay a { font-size: 28px; font-weight: 700; color: #fff; padding: 12px; }
-    .mobile-overlay .nav-cta { font-size: 18px !important; padding: 16px 32px !important; margin-top: 16px; background: var(--primary) !important; border-radius: 12px !important; }
+  /* Nav */
+  nav#bar{ position:sticky; top:0; z-index:60; background:${p.paper}e0; backdrop-filter:saturate(140%) blur(12px); -webkit-backdrop-filter:saturate(140%) blur(12px); border-bottom:1px solid ${p.border}; transition:box-shadow .3s; }
+  nav#bar.scrolled{ box-shadow:0 8px 28px -18px rgba(30,40,35,.55); }
+  .navrow{ display:flex; align-items:center; justify-content:space-between; padding:14px 32px; max-width:1200px; margin:0 auto; }
+  .logo{ display:flex; align-items:center; gap:11px; }
+  .logo-mark{ width:40px; height:40px; border-radius:12px; background:${p.primary}; display:flex; align-items:center; justify-content:center; flex:none; }
+  .logo-name{ font-family:'${p.fontHead}',sans-serif; font-weight:700; font-size:18px; color:${p.ink}; line-height:1; letter-spacing:-.01em; }
+  .logo-sub{ font-size:11px; color:${p.muted}; letter-spacing:.08em; text-transform:uppercase; margin-top:3px; }
+  .navlinks{ display:flex; align-items:center; gap:4px; }
+  .navlinks a{ color:${p.body}; font-size:15px; font-weight:600; padding:9px 16px; border-radius:10px; transition:background .2s; }
+  .navlinks a:hover{ background:${p.paperAlt}; }
+  .navlinks a.active{ color:${p.ink}; background:${p.tint}; }
+  .navphone{ display:flex; align-items:center; gap:8px; color:${p.primary}; font-size:15px; font-weight:600; }
+  .navcta{ background:${p.primary}; color:#fff; font-size:14px; font-weight:600; padding:11px 20px; border-radius:999px; box-shadow:0 6px 16px -6px ${p.primary}b3; }
+  .navcta:hover{ background:${p.primaryDark}; }
+  .burger{ display:none; flex-direction:column; gap:5px; background:none; border:none; cursor:pointer; padding:8px; }
+  .burger span{ width:22px; height:2px; background:${p.ink}; border-radius:2px; display:block; }
+  #overlay{ display:none; position:fixed; inset:0; z-index:80; background:${p.deep}f5; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  #overlay.open{ display:flex; }
+  #overlay a{ color:#fff; font-size:26px; font-weight:700; font-family:'${p.fontHead}',sans-serif; }
 
-    /* Hero */
-    #hero {
-      min-height: 100vh; display: flex; align-items: center; padding: 140px 48px 80px;
-      background: linear-gradient(135deg, #1A237E 0%, #1565C0 45%, #0097A7 100%);
-      position: relative; overflow: hidden;
-    }
-    #hero::before {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse at 70% 50%, rgba(0,151,167,0.25) 0%, transparent 60%);
-    }
-    .hero-inner { max-width: 1200px; margin: 0 auto; width: 100%; position: relative; }
-    .hero-eyebrow {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-      color: rgba(255,255,255,0.95); font-size: 12px; font-weight: 600;
-      letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 16px;
-      border-radius: 24px; margin-bottom: 28px; backdrop-filter: blur(4px);
-    }
-    .hero-h1 {
-      font-size: clamp(40px, 7vw, 84px); font-weight: 900; color: #fff;
-      line-height: 1.02; letter-spacing: -2.5px; margin-bottom: 24px; max-width: 820px;
-    }
-    .hero-sub {
-      font-size: clamp(16px, 2vw, 20px); color: rgba(255,255,255,0.75);
-      margin-bottom: 44px; font-weight: 300; max-width: 560px; line-height: 1.65;
-    }
-    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 70px; }
-    .btn-primary {
-      background: #fff; color: var(--primary); padding: 18px 36px; border-radius: 10px;
-      font-weight: 700; font-size: 16px; cursor: pointer; transition: all 0.25s;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.2); display: inline-block;
-    }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.28); }
-    .btn-ghost {
-      border: 2px solid rgba(255,255,255,0.45); color: #fff; padding: 16px 34px;
-      border-radius: 10px; font-weight: 600; font-size: 16px; cursor: pointer;
-      transition: all 0.25s; background: transparent; display: inline-block;
-    }
-    .btn-ghost:hover { border-color: #fff; background: rgba(255,255,255,0.12); }
-    .hero-trust { font-size: 13px; color: rgba(255,255,255,0.55); display: flex; align-items: center; gap: 6px; }
-    .hero-trust::before { content: '✓'; color: rgba(255,255,255,0.7); font-weight: 700; }
+  /* Hero */
+  .hero{ display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center; padding:64px 0 44px; }
+  .status-pill{ display:inline-flex; align-items:center; gap:9px; background:${p.tint}; color:${p.tintText}; font-size:13px; font-weight:600; padding:8px 15px; border-radius:999px; margin-bottom:26px; }
+  .status-dot{ width:8px; height:8px; border-radius:50%; background:#43A047; box-shadow:0 0 0 4px rgba(67,160,71,.18); }
+  .hero h1{ font-size:clamp(40px,6vw,60px); line-height:1.04; font-weight:700; letter-spacing:-.025em; color:${p.ink}; margin-bottom:22px; }
+  .hero-sub{ font-size:19px; line-height:1.6; color:${p.body}; margin:0 0 34px; max-width:460px; }
+  .hero-ctas{ display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .stats{ display:flex; gap:34px; margin-top:46px; }
+  .stat-num{ font-family:'${p.fontHead}',sans-serif; font-size:26px; font-weight:700; color:${p.ink}; }
+  .stat-lbl{ font-size:13px; color:${p.muted}; }
+  .stat-div{ width:1px; background:${p.border}; }
+  .hero-media{ position:relative; }
+  .hero-frame{ aspect-ratio:4/5; border-radius:28px; overflow:hidden; background:linear-gradient(135deg,${p.tint},${p.paperAlt}); box-shadow:0 40px 80px -40px rgba(40,60,50,.5); }
+  .float-card{ position:absolute; background:#fff; border-radius:18px; padding:15px 19px; box-shadow:0 22px 46px -18px rgba(30,40,35,.45); display:flex; align-items:center; gap:13px; }
+  .float-a{ left:-26px; bottom:42px; animation:floaty 5s ease-in-out infinite; }
+  .float-b{ right:-16px; top:32px; animation:floaty 6s ease-in-out infinite; }
+  .float-ico{ width:46px; height:46px; border-radius:50%; background:${p.primary}; display:flex; align-items:center; justify-content:center; flex:none; }
 
-    /* Scroll reveal */
-    .reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.65s cubic-bezier(0.16,1,0.3,1), transform 0.65s cubic-bezier(0.16,1,0.3,1); }
-    .reveal.visible { opacity: 1; transform: none; }
+  /* Trust strip */
+  .trust{ border-top:1px solid ${p.border}; border-bottom:1px solid ${p.border}; background:#fff; }
+  .trust-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:20px; padding:28px 32px; max-width:1200px; margin:0 auto; }
+  .trust-item{ display:flex; align-items:center; gap:13px; }
+  .trust-chip{ width:42px; height:42px; border-radius:12px; background:${p.tint}; display:flex; align-items:center; justify-content:center; flex:none; }
+  .trust-t{ font-weight:700; font-size:15px; color:${p.ink}; }
+  .trust-s{ font-size:13px; color:${p.muted}; }
 
-    /* Trust strip */
-    #trust { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 48px; }
-    .trust-inner {
-      max-width: 1200px; margin: 0 auto;
-      display: grid; grid-template-columns: repeat(4, 1fr);
-      border-left: 1px solid var(--border);
-    }
-    .trust-item {
-      display: flex; align-items: center; gap: 14px; padding: 28px 32px;
-      border-right: 1px solid var(--border);
-    }
-    .trust-icon {
-      width: 44px; height: 44px; border-radius: 10px; background: var(--primary-light);
-      color: var(--primary); display: grid; place-items: center; flex-shrink: 0; font-size: 18px;
-    }
-    .trust-title { font-size: 13px; font-weight: 700; color: var(--text); }
-    .trust-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  /* Section heads */
+  .sec{ padding:86px 0 20px; }
+  .sec-head{ text-align:center; max-width:640px; margin:0 auto 48px; }
+  .sec-head h2{ font-size:clamp(30px,4vw,40px); font-weight:700; letter-spacing:-.02em; margin-top:14px; }
 
-    /* Sections */
-    .section { padding: 96px 48px; }
-    .section-alt { background: var(--surface); }
-    .section-inner { max-width: 1200px; margin: 0 auto; }
-    .section-header { margin-bottom: 60px; }
-    .section-eyebrow {
-      font-size: 11px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase;
-      color: var(--primary); margin-bottom: 14px;
-    }
-    .section-title { font-size: clamp(28px, 4vw, 48px); font-weight: 800; color: var(--text); line-height: 1.1; letter-spacing: -1px; }
-    .section-sub { font-size: 17px; color: var(--muted); line-height: 1.7; max-width: 580px; margin-top: 16px; }
+  /* Focus cards */
+  .cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+  .card{ background:#fff; border:1px solid ${p.border}; border-radius:20px; padding:34px 30px; transition:transform .3s, box-shadow .3s; }
+  .card:hover{ transform:translateY(-4px); box-shadow:0 26px 50px -28px rgba(30,40,35,.35); }
+  .card-ico{ width:54px; height:54px; border-radius:15px; background:${p.primary}; display:flex; align-items:center; justify-content:center; margin-bottom:22px; }
+  .card h3{ font-size:22px; font-weight:700; margin-bottom:10px; }
+  .card p{ font-size:15px; line-height:1.65; color:${p.body}; margin:0 0 18px; }
+  .card a{ color:${p.primary}; font-weight:600; font-size:15px; }
 
-    /* Cards */
-    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-    .card {
-      background: var(--surface); border-radius: var(--radius); overflow: hidden;
-      box-shadow: var(--shadow-sm); border: 1px solid var(--border);
-      transition: transform 0.3s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s;
-    }
-    .card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); }
-    .card-img {
-      height: 180px; background: linear-gradient(135deg, var(--primary-light), #BBDEFB);
-      display: flex; align-items: center; justify-content: center; color: #90CAF9;
-      font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase;
-    }
-    .card-body { padding: 28px; }
-    .card-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-    .card-desc { font-size: 14px; color: var(--muted); line-height: 1.6; }
-    .card-link { font-size: 13px; font-weight: 600; color: var(--primary); margin-top: 14px; display: inline-flex; align-items: center; gap: 4px; }
+  /* Chips */
+  .chips{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; padding-top:8px; }
+  .chip{ display:flex; align-items:center; justify-content:space-between; background:${p.paperAlt}; border-radius:14px; padding:18px 22px; color:${p.ink}; font-weight:600; font-size:16px; transition:background .2s; }
+  .chip:hover{ background:${p.tint}; }
+  .chip span{ color:${p.primary}; }
 
-    /* Steps */
-    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 40px; }
-    .step-num {
-      font-size: 72px; font-weight: 900; color: var(--primary-light);
-      line-height: 1; margin-bottom: 20px; font-variant-numeric: tabular-nums;
-    }
-    .step-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-    .step-desc { font-size: 14px; color: var(--muted); line-height: 1.65; }
+  /* Philosophy */
+  .phil{ display:grid; grid-template-columns:.9fr 1.1fr; gap:56px; align-items:center; padding:86px 0; }
+  .phil-img{ aspect-ratio:1/1; overflow:hidden; background:linear-gradient(135deg,${p.tint},${p.paperAlt}); animation:blobPulse 12s ease-in-out infinite; }
+  .phil h2{ font-size:clamp(28px,4vw,40px); font-weight:700; letter-spacing:-.02em; line-height:1.1; margin:14px 0 22px; }
+  .phil p{ font-size:17px; line-height:1.7; color:${p.body}; margin:0 0 18px; }
 
-    /* About */
-    .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
-    .about-img {
-      height: 420px; background: linear-gradient(135deg, var(--primary-light), #C5CAE9);
-      border-radius: 20px; display: flex; align-items: center; justify-content: center;
-      color: #9FA8DA; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
-    }
-    .differentiators { margin-top: 32px; display: flex; flex-direction: column; gap: 20px; }
-    .diff-item { display: flex; gap: 16px; align-items: flex-start; }
-    .diff-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--primary-light); color: var(--primary); display: grid; place-items: center; flex-shrink: 0; font-size: 16px; }
-    .diff-title { font-size: 15px; font-weight: 700; color: var(--text); }
-    .diff-desc { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 3px; }
+  /* Gallery */
+  .gal{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .gal-item{ aspect-ratio:4/3; border-radius:18px; overflow:hidden; background:linear-gradient(135deg,${p.tint},${p.paperAlt}); }
+  .gal-item img{ transition:transform .5s; }
+  .gal-item:hover img{ transform:scale(1.05); }
 
-    /* Contact */
-    #contact { background: #F0F4FF; }
-    .contact-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 80px; margin-top: 60px; }
-    .contact-detail { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 28px; }
-    .contact-icon {
-      width: 48px; height: 48px; border-radius: 12px; background: var(--primary);
-      color: #fff; display: grid; place-items: center; flex-shrink: 0; font-size: 18px;
-    }
-    .contact-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); }
-    .contact-val { font-size: 16px; font-weight: 600; color: var(--text); margin-top: 3px; }
-    .map-placeholder { height: 200px; border-radius: 14px; background: linear-gradient(135deg, #DBEAFE, #C7D2FE); display: flex; align-items: center; justify-content: center; color: #7C3AED; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-top: 28px; overflow: hidden; }
-    .contact-form { background: var(--surface); border-radius: 20px; padding: 40px; box-shadow: var(--shadow-md); }
-    .form-title { font-size: 22px; font-weight: 800; margin-bottom: 28px; color: var(--text); }
-    .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
-    .form-group input, .form-group textarea, .form-group select {
-      width: 100%; padding: 13px 16px; border: 1.5px solid var(--border); border-radius: 10px;
-      font-size: 15px; font-family: inherit; color: var(--text); background: var(--bg);
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(21,101,192,0.1); }
-    .form-group textarea { min-height: 110px; resize: vertical; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .btn-submit {
-      width: 100%; background: var(--primary); color: #fff; padding: 16px; border-radius: 10px;
-      font-size: 16px; font-weight: 700; cursor: pointer; border: none; font-family: inherit;
-      transition: all 0.25s; margin-top: 8px;
-    }
-    .btn-submit:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(21,101,192,0.35); }
+  /* Dark band */
+  .dark{ background:${p.deep}; color:${p.onDark}; margin-top:86px; }
+  .dark-grid{ display:grid; grid-template-columns:1fr 1.15fr; gap:56px; padding:80px 32px; max-width:1200px; margin:0 auto; }
+  .dark .eyebrow{ color:${p.onDarkMuted}; }
+  .dark h2{ font-size:34px; font-weight:700; color:#fff; margin:14px 0 24px; }
+  .open-badge{ display:inline-flex; align-items:center; gap:9px; background:${p.primary}28; color:${p.onDark}; font-size:14px; font-weight:600; padding:9px 16px; border-radius:999px; margin-bottom:24px; }
+  .hours-row{ display:flex; justify-content:space-between; padding:13px 16px; border-radius:10px; }
+  .hours-row.today{ background:${p.primary}26; }
+  .hours-row span:last-child{ color:${p.onDark}; }
+  .map-panel{ aspect-ratio:16/9; border-radius:16px; overflow:hidden; background:linear-gradient(135deg,${p.deepEnd},${p.primary}); display:flex; align-items:center; justify-content:center; margin-bottom:22px; position:relative; }
+  .info-cards{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .info-card{ background:rgba(255,255,255,.05); border-radius:12px; padding:16px 18px; }
+  .info-card .t{ font-weight:700; margin-bottom:6px; color:#fff; }
+  .info-card .d{ font-size:14px; color:${p.onDarkMuted}; line-height:1.5; }
 
-    /* Footer */
-    footer { background: #0F172A; color: rgba(255,255,255,0.55); padding: 64px 48px 40px; }
-    .footer-inner { max-width: 1200px; margin: 0 auto; }
-    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 60px; margin-bottom: 48px; }
-    .footer-logo { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px; margin-bottom: 12px; }
-    .footer-tagline { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.4); max-width: 280px; }
-    .footer-col-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.7); margin-bottom: 18px; }
-    .footer-col a { display: block; font-size: 14px; color: rgba(255,255,255,0.4); margin-bottom: 10px; transition: color 0.2s; }
-    .footer-col a:hover { color: #fff; }
-    .footer-divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin-bottom: 28px; }
-    .footer-copy { font-size: 13px; color: rgba(255,255,255,0.25); }
+  /* Reviews */
+  .rev-note{ text-align:center; font-size:13px; color:${p.muted}; margin:0 0 30px; font-style:italic; }
+  .rev-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+  .rev-card{ background:#fff; border:1px solid ${p.border}; border-radius:18px; padding:28px; }
+  .rev-stars{ color:${p.accent}; margin-bottom:14px; letter-spacing:2px; }
+  .rev-card p{ font-size:16px; line-height:1.6; color:${p.body}; margin:0 0 20px; font-style:italic; }
+  .rev-who{ display:flex; align-items:center; gap:11px; }
+  .rev-av{ width:38px; height:38px; border-radius:50%; background:${p.tint}; color:${p.primary}; display:flex; align-items:center; justify-content:center; font-weight:700; }
 
-    /* Responsive */
-    @media (max-width: 1024px) {
-      .cards { grid-template-columns: repeat(2, 1fr); }
-      .about-grid { grid-template-columns: 1fr; gap: 48px; }
-      .footer-grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 768px) {
-      #main-nav { padding: 16px 20px; }
-      #main-nav.scrolled { padding: 12px 20px; }
-      .nav-links { display: none; }
-      .hamburger { display: flex; }
-      #hero { padding: 100px 20px 60px; }
-      .hero-ctas { flex-direction: column; }
-      .btn-primary, .btn-ghost { text-align: center; width: 100%; }
-      .section { padding: 64px 20px; }
-      .trust-inner { grid-template-columns: repeat(2, 1fr); border-left: none; }
-      .trust-item { border: 1px solid var(--border); }
-      #trust { padding: 0 20px; }
-      .steps { grid-template-columns: 1fr; gap: 32px; }
-      .contact-grid { grid-template-columns: 1fr; gap: 40px; }
-      .form-row { grid-template-columns: 1fr; }
-      footer { padding: 48px 20px 32px; }
-      .footer-grid { grid-template-columns: 1fr; gap: 36px; }
-    }
-    @media (max-width: 640px) {
-      .cards { grid-template-columns: 1fr; }
-      .trust-inner { grid-template-columns: 1fr; }
-    }
-  </style>
+  /* CTA band */
+  .ctaband{ padding:0 32px; max-width:1200px; margin:86px auto; }
+  .ctaband-inner{ background:linear-gradient(135deg,${p.primary},${p.deepEnd}); border-radius:28px; padding:64px 56px; display:flex; align-items:center; justify-content:space-between; gap:40px; flex-wrap:wrap; position:relative; overflow:hidden; }
+  .ctaband-circle{ position:absolute; right:-60px; top:-60px; width:280px; height:280px; border-radius:50%; background:rgba(255,255,255,.05); }
+  .ctaband h2{ font-size:clamp(30px,4vw,38px); font-weight:700; color:#fff; margin-bottom:12px; line-height:1.1; }
+  .ctaband p{ font-size:18px; color:${p.onDark}; margin:0; max-width:440px; }
+
+  /* Contact */
+  .contact-grid{ display:grid; grid-template-columns:1fr 1.1fr; gap:56px; margin-top:48px; }
+  .cdetail{ display:flex; align-items:flex-start; gap:16px; margin-bottom:24px; }
+  .cdetail-ico{ width:46px; height:46px; border-radius:12px; background:${p.tint}; color:${p.primary}; display:flex; align-items:center; justify-content:center; flex:none; }
+  .cdetail .l{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:${p.muted}; }
+  .cdetail .v{ font-size:16px; font-weight:600; color:${p.ink}; margin-top:3px; }
+  .cdetail .v a{ color:${p.ink}; }
+  .form{ background:#fff; border:1px solid ${p.border}; border-radius:22px; padding:36px; }
+  .form h3{ font-size:22px; font-weight:700; margin-bottom:24px; }
+  .fg{ margin-bottom:16px; }
+  .fg label{ display:block; font-size:13px; font-weight:600; color:${p.ink}; margin-bottom:7px; }
+  .fg input, .fg textarea{ width:100%; padding:13px 15px; background:${p.paper}; border:1.5px solid ${p.border}; border-radius:11px; font-size:15px; font-family:inherit; color:${p.ink}; transition:border-color .2s, box-shadow .2s; }
+  .fg input:focus, .fg textarea:focus{ outline:none; border-color:${p.primary}; box-shadow:0 0 0 3px ${p.primary}1f; }
+  .fg textarea{ min-height:110px; resize:vertical; }
+  .frow{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  /* Footer */
+  footer{ background:${p.deep}; color:${p.onDarkMuted}; padding:64px 32px 36px; }
+  .foot-grid{ display:grid; grid-template-columns:2fr 1fr 1fr; gap:56px; max-width:1200px; margin:0 auto 44px; }
+  .foot-logo{ font-family:'${p.fontHead}',sans-serif; font-size:22px; font-weight:700; color:#fff; margin-bottom:12px; }
+  .foot-blurb{ font-size:14px; line-height:1.6; max-width:280px; }
+  .foot-col h4{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:${p.onDark}; margin:0 0 16px; }
+  .foot-col a, .foot-col div{ display:block; font-size:14px; color:${p.onDarkMuted}; margin-bottom:10px; }
+  .foot-col a:hover{ color:#fff; }
+  .foot-bottom{ border-top:1px solid rgba(255,255,255,.1); padding-top:24px; max-width:1200px; margin:0 auto; font-size:13px; color:${p.onDarkMuted}; }
+
+  @media(max-width:980px){
+    .hero{ grid-template-columns:1fr; gap:40px; } .stats{ gap:24px; }
+    .cards,.rev-grid,.gal{ grid-template-columns:1fr 1fr; }
+    .phil,.dark-grid,.contact-grid,.foot-grid{ grid-template-columns:1fr; gap:36px; }
+    .ctaband-inner{ padding:48px 36px; }
+  }
+  @media(max-width:768px){ .navlinks,.navphone{ display:none; } .burger{ display:flex; } }
+  @media(max-width:720px){
+    .wrap{ padding:0 20px; } .trust-grid{ grid-template-columns:1fr 1fr; }
+    .cards,.rev-grid,.gal,.chips,.frow{ grid-template-columns:1fr; }
+    .float-a,.float-b{ position:static; margin-top:14px; animation:none; display:inline-flex; }
+  }
+</style>
 </head>
 <body>
 
-<div id="wlabs-badge" onclick="this.remove()" title="Dismiss">✦ ${de ? "Konzept von WLABS" : "Concept by WLABS"}</div>
+<div id="wlabs" onclick="this.remove()" title="${de ? "Ausblenden" : "Dismiss"}">✦ ${de ? "Konzept von WLABS" : "Concept by WLABS"}</div>
 
-<!-- Mobile overlay -->
-<div class="mobile-overlay" id="mobile-menu">
-  ${navLinks.map((label, i) => `<a href="${navAnchors[i]}" onclick="closeMobile()">${label}</a>`).join("\n  ")}
-  <a href="#contact" class="nav-cta" onclick="closeMobile()">${ctaLabel}</a>
+<div id="overlay">
+  ${nav.map((n, i) => `<a href="${navHref[i]}" onclick="closeMenu()">${n}</a>`).join("\n  ")}
+  <a href="#contact" class="navcta" style="font-size:18px; padding:15px 30px;" onclick="closeMenu()">${ctaLabel}</a>
 </div>
 
-<!-- Nav -->
-<nav id="main-nav">
-  <div class="nav-logo">${input.businessName}</div>
-  <div class="nav-links">
-    ${navLinks.map((label, i) => `<a href="${navAnchors[i]}">${label}</a>`).join("\n    ")}
-    <a href="#contact" class="nav-cta">${ctaLabel}</a>
+<nav id="bar"><div class="navrow" id="top">
+  <a href="#top" class="logo">
+    <span class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M12 2 4 5v6c0 5 3.4 8.6 8 11 4.6-2.4 8-6 8-11V5l-8-3Z" stroke="#fff" stroke-width="1.7" fill="none"/><path d="m9 12 2 2 4-4" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span><span class="logo-name">${input.businessName}</span><br><span class="logo-sub">${label}${input.city ? ` · ${input.city}` : ""}</span></span>
+  </a>
+  <div class="navlinks">
+    ${nav.map((n, i) => `<a href="${navHref[i]}"${i === 0 ? ' class="active"' : ""}>${n}</a>`).join("\n    ")}
   </div>
-  <button class="hamburger" id="hamburger-btn" onclick="toggleMobile()" aria-label="Menu">
-    <span></span><span></span><span></span>
-  </button>
-</nav>
+  <div style="display:flex; align-items:center; gap:18px;">
+    ${phone ? `<a href="tel:${phone}" class="navphone"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.3 1l-2.2 2.3Z" fill="${p.primary}"/></svg>${phone}</a>` : ""}
+    <a href="#contact" class="navcta">${ctaLabel}</a>
+    <button class="burger" onclick="openMenu()" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</div></nav>
 
-<!-- Hero -->
-<section id="hero">
-  <div class="hero-inner">
-    <div class="hero-eyebrow">${input.industry.replace(/_/g, " ")}${input.city ? ` · ${input.city}` : ""}</div>
-    <h1 class="hero-h1">${heroHeadline}</h1>
+<!-- HERO -->
+<section class="wrap"><div class="hero">
+  <div>
+    <span class="status-pill"><span class="status-dot"></span>${de ? "Jetzt für neue Anfragen geöffnet" : "Open for new enquiries"}</span>
+    <h1>${heroTitle}</h1>
     <p class="hero-sub">${heroSub}</p>
     <div class="hero-ctas">
-      ${hasPhone
-        ? `<a href="tel:${input.contactPhone}" class="btn-primary">${de ? "Jetzt anrufen" : "Call now"}: ${input.contactPhone}</a>`
-        : `<a href="#contact" class="btn-primary">${ctaLabel}</a>`}
-      <a href="#services" class="btn-ghost">${ctaAlt}</a>
+      ${phone ? `<a href="tel:${phone}" class="btn btn-primary">${de ? "Jetzt anrufen" : "Call now"}</a>` : `<a href="#contact" class="btn btn-primary">${ctaLabel}</a>`}
+      <a href="#services" class="btn btn-outline">${de ? "Unsere Leistungen" : "Our services"}</a>
     </div>
-    <p class="hero-trust">${de ? `Lokales Unternehmen in ${input.city ?? "Ihrer Region"} — persönlich & zuverlässig` : `Local ${input.city ?? "area"} business — personal service you can trust`}</p>
+    <div class="stats">
+      <div><div class="stat-num">${input.city ?? (de ? "Lokal" : "Local")}</div><div class="stat-lbl">${de ? "Vor Ort für Sie" : "In your area"}</div></div>
+      <div class="stat-div"></div>
+      <div><div class="stat-num">${de ? "Persönlich" : "Personal"}</div><div class="stat-lbl">${de ? "Direkter Kontakt" : "Direct contact"}</div></div>
+      <div class="stat-div"></div>
+      <div><div class="stat-num">${label}</div><div class="stat-lbl">${de ? "Ihr Fachbetrieb" : "Your specialist"}</div></div>
+    </div>
+  </div>
+  <div class="hero-media">
+    <div class="hero-frame">${img(input.heroImageUrl, input.businessName)}</div>
+    <div class="float-card float-a">
+      <span class="float-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <div><div style="font-size:14px; font-weight:700; color:${p.ink};">${de ? "Geprüfte Qualität" : "Trusted quality"}</div><div style="font-size:12px; color:${p.muted};">${de ? "Persönlich & lokal" : "Personal & local"}</div></div>
+    </div>
+    <div class="float-card float-b">
+      <div><div style="font-size:14px; font-weight:700; color:${p.ink};">${de ? "Schnelle Antwort" : "Fast response"}</div><div style="font-size:12px; color:${p.muted};">${de ? "Innerhalb 24 Std." : "Within 24 hours"}</div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- TRUST STRIP -->
+<section class="trust"><div class="trust-grid">
+  ${[
+    [de ? "Lizenziert" : "Licensed", de ? "& versichert" : "& insured", '<path d="M12 2 4 5v6c0 5 3.4 8.6 8 11 4.6-2.4 8-6 8-11V5l-8-3Z" stroke="STK" stroke-width="1.8" fill="none"/>'],
+    [de ? "Kurze" : "Short", de ? "Wartezeiten" : "wait times", '<circle cx="12" cy="12" r="9" stroke="STK" stroke-width="1.8"/><path d="M12 7v5l3 2" stroke="STK" stroke-width="1.8" stroke-linecap="round"/>'],
+    [de ? "Lokal" : "Local", input.city ?? (de ? "vor Ort" : "team"), '<path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z" stroke="STK" stroke-width="1.8"/><circle cx="12" cy="10" r="2.5" stroke="STK" stroke-width="1.8"/>'],
+    [de ? "Persönliche" : "Personal", de ? "Beratung" : "service", '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" stroke="STK" stroke-width="1.8" fill="none"/>'],
+  ].map(([t, s, svg]) => `<div class="trust-item"><span class="trust-chip"><svg width="20" height="20" viewBox="0 0 24 24" fill="none">${svg.replace(/STK/g, p.primary)}</svg></span><div><div class="trust-t">${t}</div><div class="trust-s">${s}</div></div></div>`).join("\n  ")}
+</div></section>
+
+<!-- FOCUS -->
+<section class="sec wrap reveal" id="services">
+  <div class="sec-head">
+    <span class="eyebrow">${de ? "Unsere Schwerpunkte" : "What we do"}</span>
+    <h2>${de ? "Das gesamte Spektrum, persönlich für Sie" : "The full spectrum, made personal"}</h2>
+  </div>
+  <div class="cards">
+    ${[
+      [de ? "Kernleistung" : "Core service", de ? "Professionelle Beratung und Umsetzung für nachhaltige, sichtbare Ergebnisse." : "Expert advice and delivery focused on lasting, visible results.", '<path d="M12 2v20M2 12h20" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'],
+      [de ? "Maßgeschneidert" : "Tailored to you", de ? "Individuelle Lösungen, abgestimmt auf Ihre Wünsche und Ihr Budget." : "Individual solutions shaped around your goals and budget.", '<path d="M3 7h18M3 12h18M3 17h12" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'],
+      [de ? "Rundum-Service" : "End to end", de ? "Von der ersten Beratung bis zur Nachbetreuung — alles aus einer Hand." : "From first consultation to aftercare — all in one place.", '<path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>'],
+    ].map(([t, d, svg]) => `<div class="card"><span class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none">${svg}</svg></span><h3>${t}</h3><p>${d}</p><a href="#contact">${de ? "Mehr erfahren →" : "Learn more →"}</a></div>`).join("\n    ")}
   </div>
 </section>
 
-<!-- Trust strip -->
-<div id="trust">
-  <div class="trust-inner">
-    <div class="trust-item reveal">
-      <div class="trust-icon">🛡</div>
-      <div><div class="trust-title">${de ? "Lizenziert & versichert" : "Licensed & insured"}</div><div class="trust-desc">${de ? "Volles Vertrauen" : "Full peace of mind"}</div></div>
-    </div>
-    <div class="trust-item reveal" style="transition-delay:0.08s">
-      <div class="trust-icon">📍</div>
-      <div><div class="trust-title">${de ? `Lokal in ${input.city ?? "Ihrer Stadt"}` : `Local ${input.city ?? "area"} team`}</div><div class="trust-desc">${de ? "Kennen die Region" : "We know the area"}</div></div>
-    </div>
-    <div class="trust-item reveal" style="transition-delay:0.16s">
-      <div class="trust-icon">⚡</div>
-      <div><div class="trust-title">${de ? "Schnelle Reaktion" : "Fast response"}</div><div class="trust-desc">${de ? "Innerhalb von 24h" : "Within 24 hours"}</div></div>
-    </div>
-    <div class="trust-item reveal" style="transition-delay:0.24s">
-      <div class="trust-icon">💬</div>
-      <div><div class="trust-title">${de ? "Persönliche Beratung" : "Personal service"}</div><div class="trust-desc">${de ? "Direkt & transparent" : "Direct & transparent"}</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- Services -->
-<section class="section" id="services">
-  <div class="section-inner">
-    <div class="section-header reveal">
-      <div class="section-eyebrow">${de ? "Leistungen" : "Services"}</div>
-      <h2 class="section-title">${de ? "Was wir für Sie tun" : "What we offer"}</h2>
-      <p class="section-sub">${de ? `${input.businessName} bietet ein breites Spektrum professioneller Leistungen — maßgeschneidert für Ihre Bedürfnisse.` : `${input.businessName} provides comprehensive professional services designed around your specific needs.`}</p>
-    </div>
-    <div class="cards">
-      <div class="card reveal">
-        <div class="card-img">[${de ? "Bild Leistung 1" : "Service image 1"}]</div>
-        <div class="card-body">
-          <div class="card-title">${de ? "Kernleistung 1" : "Core service 1"}</div>
-          <div class="card-desc">${de ? "Professionelle Beratung und Umsetzung für nachhaltige Ergebnisse." : "Expert consultation and delivery focused on lasting results."}</div>
-          <div class="card-link">${de ? "→ Mehr erfahren" : "→ Learn more"}</div>
-        </div>
-      </div>
-      <div class="card reveal" style="transition-delay:0.1s">
-        <div class="card-img">[${de ? "Bild Leistung 2" : "Service image 2"}]</div>
-        <div class="card-body">
-          <div class="card-title">${de ? "Kernleistung 2" : "Core service 2"}</div>
-          <div class="card-desc">${de ? "Maßgeschneiderte Lösungen für Ihre individuellen Anforderungen." : "Tailored solutions designed around your unique requirements."}</div>
-          <div class="card-link">${de ? "→ Mehr erfahren" : "→ Learn more"}</div>
-        </div>
-      </div>
-      <div class="card reveal" style="transition-delay:0.2s">
-        <div class="card-img">[${de ? "Bild Leistung 3" : "Service image 3"}]</div>
-        <div class="card-body">
-          <div class="card-title">${de ? "Kernleistung 3" : "Core service 3"}</div>
-          <div class="card-desc">${de ? "Zuverlässige Unterstützung und langfristiger Service." : "Reliable support and long-term partnership."}</div>
-          <div class="card-link">${de ? "→ Mehr erfahren" : "→ Learn more"}</div>
-        </div>
-      </div>
-    </div>
+<!-- CHIPS -->
+<section class="sec wrap reveal" style="padding-top:40px;">
+  <div class="chips">
+    ${chips.map((c) => `<a href="#contact" class="chip">${c} <span>→</span></a>`).join("\n    ")}
   </div>
 </section>
 
-<!-- Process -->
-<section class="section section-alt" id="process">
-  <div class="section-inner">
-    <div class="section-header reveal">
-      <div class="section-eyebrow">${de ? "So arbeiten wir" : "How it works"}</div>
-      <h2 class="section-title">${de ? "Einfach & transparent" : "Simple & transparent"}</h2>
-    </div>
-    <div class="steps">
-      <div class="step reveal">
-        <div class="step-num">01</div>
-        <div class="step-title">${de ? "Erstgespräch" : "Initial consultation"}</div>
-        <div class="step-desc">${de ? "Wir besprechen Ihre Anforderungen und finden die optimale Lösung für Ihr Anliegen." : "We discuss your needs and identify the optimal solution for your situation."}</div>
-      </div>
-      <div class="step reveal" style="transition-delay:0.1s">
-        <div class="step-num">02</div>
-        <div class="step-title">${de ? "Angebot & Planung" : "Proposal & planning"}</div>
-        <div class="step-desc">${de ? "Transparentes Angebot auf Basis Ihrer Bedürfnisse — keine versteckten Kosten." : "Clear proposal based on your needs — no hidden costs or surprises."}</div>
-      </div>
-      <div class="step reveal" style="transition-delay:0.2s">
-        <div class="step-num">03</div>
-        <div class="step-title">${de ? "Professionelle Umsetzung" : "Professional delivery"}</div>
-        <div class="step-desc">${de ? "Pünktliche und qualitativ hochwertige Umsetzung nach Ihren Vorgaben." : "Timely, high-quality delivery aligned with your specifications."}</div>
-      </div>
-      <div class="step reveal" style="transition-delay:0.3s">
-        <div class="step-num">04</div>
-        <div class="step-title">${de ? "Nachbetreuung" : "Aftercare"}</div>
-        <div class="step-desc">${de ? "Auch nach Abschluss stehen wir für Fragen und Anpassungen zur Verfügung." : "We remain available for questions and adjustments long after delivery."}</div>
-      </div>
-    </div>
+<!-- PHILOSOPHY -->
+<section class="wrap reveal" id="about"><div class="phil">
+  <div class="phil-img">${img(input.philosophyImageUrl, de ? "Über uns" : "About us")}</div>
+  <div>
+    <span class="eyebrow">${de ? "Unsere Philosophie" : "Our philosophy"}</span>
+    <h2>${de ? "Damit Sie gern und mit gutem Gefühl wiederkommen." : "So you leave glad you came — and happy to return."}</h2>
+    <p>${de ? `Bei ${input.businessName} steht der Mensch im Mittelpunkt. Wir nehmen uns Zeit, hören zu und erklären verständlich — damit Sie sich von Anfang an gut aufgehoben fühlen.` : `At ${input.businessName}, people come first. We take the time to listen and explain things clearly — so you feel looked after from the very first moment.`}</p>
+    <p>${de ? "Hochwertige Arbeit, faire Preise und ein Team, das Ihre Sprache spricht. Das ist unser Anspruch — jeden Tag aufs Neue." : "Quality work, fair pricing and a team that speaks your language. That's our standard — every single day."}</p>
+    <a href="#contact" class="btn btn-outline" style="margin-top:8px;">${de ? "Lernen Sie uns kennen →" : "Get to know us →"}</a>
+  </div>
+</div></section>
+
+<!-- GALLERY -->
+<section class="sec wrap reveal" style="padding-top:20px;">
+  <div class="sec-head">
+    <span class="eyebrow">${de ? "Einblicke" : "A look inside"}</span>
+    <h2>${de ? "Ein Eindruck von uns" : "A glimpse of our work"}</h2>
+  </div>
+  <div class="gal">
+    ${gallery.slice(0, 3).map((g) => `<div class="gal-item">${img(g, input.businessName)}</div>`).join("\n    ")}
   </div>
 </section>
 
-<!-- About -->
-<section class="section" id="about">
-  <div class="section-inner">
-    <div class="about-grid">
-      <div class="about-img reveal">[${de ? "Bild — Team / Arbeitsplatz" : "Image — team / workspace"}]</div>
-      <div>
-        <div class="section-header reveal">
-          <div class="section-eyebrow">${de ? "Über uns" : "About us"}</div>
-          <h2 class="section-title">${de ? `Warum ${input.businessName}?` : `Why ${input.businessName}?`}</h2>
-          <p class="section-sub">${de ? `${input.businessName} steht für Qualität, Verlässlichkeit und persönliche Betreuung${input.city ? ` in ${input.city}` : ""}. Wir kennen die lokalen Bedürfnisse und sprechen Ihre Sprache.` : `${input.businessName} stands for quality, reliability and personal attention${input.city ? ` in ${input.city}` : ""}. We understand local needs and speak your language.`}</p>
-        </div>
-        <div class="differentiators reveal">
-          <div class="diff-item">
-            <div class="diff-icon">✓</div>
-            <div><div class="diff-title">${de ? "Lokal verwurzelt" : "Locally rooted"}</div><div class="diff-desc">${de ? `Wir sind Teil der Gemeinschaft in ${input.city ?? "Ihrer Region"}.` : `We're part of the ${input.city ?? "local"} community.`}</div></div>
-          </div>
-          <div class="diff-item">
-            <div class="diff-icon">✓</div>
-            <div><div class="diff-title">${de ? "Persönlicher Ansprechpartner" : "Dedicated point of contact"}</div><div class="diff-desc">${de ? "Sie erreichen uns direkt — kein Callcenter." : "Reach us directly — no call centres or queues."}</div></div>
-          </div>
-          <div class="diff-item">
-            <div class="diff-icon">✓</div>
-            <div><div class="diff-title">${de ? "Transparente Preise" : "Transparent pricing"}</div><div class="diff-desc">${de ? "Klare Angebote ohne versteckte Kosten." : "Clear quotes with no hidden fees."}</div></div>
-          </div>
-        </div>
-      </div>
+<!-- HOURS + LOCATION (dark) -->
+<section class="dark reveal"><div class="dark-grid">
+  <div>
+    <span class="eyebrow">${de ? "Öffnungszeiten" : "Opening hours"}</span>
+    <h2>${de ? "Wann Sie uns erreichen" : "When to reach us"}</h2>
+    <div class="open-badge"><span class="status-dot"></span>${de ? "Heute geöffnet" : "Open today"}</div>
+    <div style="display:flex; flex-direction:column; gap:2px;">
+      ${(de
+        ? [["Montag – Donnerstag", "08:00 – 18:00", true], ["Freitag", "08:00 – 14:00", false], ["Samstag", de ? "Nach Vereinbarung" : "By appointment", false], ["Sonntag", de ? "Geschlossen" : "Closed", false]]
+        : [["Monday – Thursday", "8:00 – 18:00", true], ["Friday", "8:00 – 14:00", false], ["Saturday", "By appointment", false], ["Sunday", "Closed", false]]
+      ).map(([d, h, today]) => `<div class="hours-row${today ? " today" : ""}"><span style="font-weight:600; color:#fff;">${d}</span><span>${h}</span></div>`).join("\n      ")}
     </div>
+  </div>
+  <div>
+    <span class="eyebrow">${de ? "So finden Sie uns" : "Find us"}</span>
+    <h2>${input.city ?? (de ? "In Ihrer Nähe" : "Near you")}</h2>
+    <div class="map-panel">
+      ${addr
+        ? `<iframe src="https://maps.google.com/maps?q=${encodeURIComponent(addr)}&output=embed&z=15" width="100%" height="100%" style="border:0;" loading="lazy" title="Map"></iframe>`
+        : `<span style="color:#fff; display:flex; flex-direction:column; align-items:center; gap:8px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z" stroke="#fff" stroke-width="1.7"/><circle cx="12" cy="10" r="2.5" stroke="#fff" stroke-width="1.7"/></svg><span style="font-size:13px; letter-spacing:.1em;">${input.city ?? ""}</span></span>`}
+    </div>
+    <div class="info-cards">
+      <div class="info-card"><div class="t">🚗 ${de ? "Anfahrt" : "By car"}</div><div class="d">${de ? "Gute Erreichbarkeit und Parkmöglichkeiten in der Nähe." : "Easy to reach with parking nearby."}</div></div>
+      <div class="info-card"><div class="t">📞 ${de ? "Kontakt" : "Contact"}</div><div class="d">${phone ?? (de ? "Rufen Sie uns gerne an." : "Give us a call anytime.")}</div></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- REVIEWS (honest placeholder) -->
+<section class="sec wrap reveal">
+  <div class="sec-head">
+    <div class="rev-stars" style="font-size:22px; text-align:center;">★★★★★</div>
+    <h2>${de ? "Was unsere Kundinnen und Kunden sagen" : "What our customers say"}</h2>
+  </div>
+  <p class="rev-note">${reviewNote}</p>
+  <div class="rev-grid">
+    ${sampleReviews.map((r, i) => `<div class="rev-card"><div class="rev-stars">★★★★★</div><p>"${r}"</p><div class="rev-who"><span class="rev-av">${["A", "M", "S"][i]}</span><div><div style="font-weight:700; font-size:14px; color:${p.ink};">${de ? "Kundin/Kunde" : "Customer"}</div><div style="font-size:13px; color:${p.muted};">${de ? "Beispiel" : "Sample"}</div></div></div></div>`).join("\n    ")}
   </div>
 </section>
 
-<!-- Contact -->
-<section class="section" id="contact">
-  <div class="section-inner">
-    <div class="section-header reveal">
-      <div class="section-eyebrow">${de ? "Kontakt" : "Contact"}</div>
-      <h2 class="section-title">${de ? "Sprechen Sie uns an" : "Get in touch"}</h2>
-      <p class="section-sub">${de ? "Wir freuen uns auf Ihre Anfrage und melden uns innerhalb eines Werktages." : "We'd love to hear from you. We typically respond within one business day."}</p>
+<!-- CTA BAND -->
+<section class="ctaband reveal"><div class="ctaband-inner">
+  <div class="ctaband-circle"></div>
+  <div style="position:relative;">
+    <h2>${de ? "Bereit, den nächsten Schritt zu gehen?" : "Ready to take the next step?"}</h2>
+    <p>${de ? "Schreiben Sie uns oder rufen Sie an — wir freuen uns auf Sie." : "Send us a message or give us a call — we'd love to hear from you."}</p>
+  </div>
+  <div style="position:relative; display:flex; gap:14px; flex-wrap:wrap;">
+    <a href="#contact" class="btn" style="background:#fff; color:${p.ink};">${ctaLabel}</a>
+    ${phone ? `<a href="tel:${phone}" class="btn" style="border:1.5px solid rgba(255,255,255,.4); color:#fff;">${phone}</a>` : ""}
+  </div>
+</div></section>
+
+<!-- CONTACT -->
+<section class="sec wrap reveal" id="contact" style="padding-bottom:86px;">
+  <div class="sec-head">
+    <span class="eyebrow">${de ? "Kontakt" : "Contact"}</span>
+    <h2>${de ? "Sprechen Sie uns an" : "Get in touch"}</h2>
+  </div>
+  <div class="contact-grid">
+    <div>
+      ${phone ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.3 1l-2.2 2.3Z" fill="${p.primary}"/></svg></span><div><div class="l">${de ? "Telefon" : "Phone"}</div><div class="v"><a href="tel:${phone}">${phone}</a></div></div></div>` : ""}
+      ${email ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="${p.primary}" stroke-width="1.8"/><path d="m3 7 9 6 9-6" stroke="${p.primary}" stroke-width="1.8"/></svg></span><div><div class="l">${de ? "E-Mail" : "Email"}</div><div class="v"><a href="mailto:${email}">${email}</a></div></div></div>` : ""}
+      ${addr ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z" stroke="${p.primary}" stroke-width="1.8"/><circle cx="12" cy="10" r="2.5" stroke="${p.primary}" stroke-width="1.8"/></svg></span><div><div class="l">${de ? "Adresse" : "Address"}</div><div class="v">${addr}</div></div></div>` : ""}
     </div>
-    <div class="contact-grid">
-      <div class="reveal">
-        ${hasPhone ? `<div class="contact-detail"><div class="contact-icon">📞</div><div><div class="contact-label">${de ? "Telefon" : "Phone"}</div><div class="contact-val"><a href="tel:${input.contactPhone}">${input.contactPhone}</a></div></div></div>` : ""}
-        ${hasEmail ? `<div class="contact-detail"><div class="contact-icon">✉</div><div><div class="contact-label">${de ? "E-Mail" : "Email"}</div><div class="contact-val"><a href="mailto:${input.contactEmail}">${input.contactEmail}</a></div></div></div>` : ""}
-        ${hasAddress ? `<div class="contact-detail"><div class="contact-icon">📍</div><div><div class="contact-label">${de ? "Adresse" : "Address"}</div><div class="contact-val">${input.addressHint}</div></div></div>` : ""}
-        ${hasAddress
-          ? `<div class="map-placeholder"><iframe src="https://maps.google.com/maps?q=${encodeURIComponent(input.addressHint ?? "")}&output=embed" width="100%" height="200" frameborder="0" style="border:0;border-radius:14px" loading="lazy" title="Map"></iframe></div>`
-          : `<div class="map-placeholder">[${de ? "Standort-Karte" : "Location map"}]</div>`}
-      </div>
-      <div class="contact-form reveal" style="transition-delay:0.15s">
-        <div class="form-title">${de ? "Kostenlose Anfrage" : "Free enquiry"}</div>
-        <form action="#" onsubmit="return false">
-          <div class="form-row">
-            <div class="form-group"><label>${de ? "Vorname" : "First name"}</label><input type="text" placeholder="${de ? "Max" : "John"}"></div>
-            <div class="form-group"><label>${de ? "Nachname" : "Last name"}</label><input type="text" placeholder="${de ? "Mustermann" : "Smith"}"></div>
-          </div>
-          <div class="form-group"><label>${de ? "E-Mail oder Telefon" : "Email or phone"}</label><input type="text" placeholder="${de ? "max@beispiel.de" : "you@example.com"}"></div>
-          <div class="form-group"><label>${de ? "Ihre Nachricht" : "Your message"}</label><textarea placeholder="${de ? "Wie können wir Ihnen helfen?" : "How can we help you?"}"></textarea></div>
-          <button class="btn-submit" type="submit">${de ? "Nachricht senden" : "Send message"} →</button>
-        </form>
-      </div>
+    <div class="form">
+      <h3>${de ? "Nachricht senden" : "Send a message"}</h3>
+      <form action="#" onsubmit="return false">
+        <div class="frow">
+          <div class="fg"><label>${de ? "Name" : "Name"}</label><input type="text" placeholder="${de ? "Ihr Name" : "Your name"}"></div>
+          <div class="fg"><label>${de ? "Telefon" : "Phone"}</label><input type="tel" placeholder="${de ? "Ihre Nummer" : "Your number"}"></div>
+        </div>
+        <div class="fg"><label>${de ? "E-Mail" : "Email"}</label><input type="email" placeholder="${de ? "ihre@email.de" : "you@email.com"}"></div>
+        <div class="fg"><label>${de ? "Ihre Nachricht" : "Your message"}</label><textarea placeholder="${de ? "Wie können wir helfen?" : "How can we help?"}"></textarea></div>
+        <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">${de ? "Absenden" : "Send message"} →</button>
+      </form>
     </div>
   </div>
 </section>
 
-<!-- Footer -->
+<!-- FOOTER -->
 <footer>
-  <div class="footer-inner">
-    <div class="footer-grid">
-      <div>
-        <div class="footer-logo">${input.businessName}</div>
-        <div class="footer-tagline">${de ? `Ihr lokaler Experte${input.city ? ` in ${input.city}` : ""} für professionelle Lösungen.` : `Your local${input.city ? ` ${input.city}` : ""} expert for professional solutions.`}</div>
-      </div>
-      <div class="footer-col">
-        <div class="footer-col-title">${de ? "Navigation" : "Navigation"}</div>
-        ${navLinks.map((label, i) => `<a href="${navAnchors[i]}">${label}</a>`).join("\n        ")}
-      </div>
-      <div class="footer-col">
-        <div class="footer-col-title">${de ? "Kontakt" : "Contact"}</div>
-        ${hasPhone ? `<a href="tel:${input.contactPhone}">${input.contactPhone}</a>` : ""}
-        ${hasEmail ? `<a href="mailto:${input.contactEmail}">${input.contactEmail}</a>` : ""}
-        ${input.city ? `<a href="#contact">${input.city}${input.country ? `, ${input.country}` : ""}</a>` : ""}
-      </div>
+  <div class="foot-grid">
+    <div>
+      <div class="foot-logo">${input.businessName}</div>
+      <div class="foot-blurb">${de ? `Ihr ${label}-Fachbetrieb${input.city ? ` in ${input.city}` : ""}. Persönlich, zuverlässig und immer für Sie da.` : `Your local ${label.toLowerCase()}${input.city ? ` in ${input.city}` : ""}. Personal, reliable and always here for you.`}</div>
     </div>
-    <hr class="footer-divider">
-    <div class="footer-copy">© ${year} ${input.businessName}. ${de ? "Alle Rechte vorbehalten." : "All rights reserved."} · ${de ? "Website-Konzept von" : "Website concept by"} WLABS</div>
+    <div class="foot-col"><h4>${de ? "Navigation" : "Navigation"}</h4>${nav.map((n, i) => `<a href="${navHref[i]}">${n}</a>`).join("")}</div>
+    <div class="foot-col"><h4>${de ? "Kontakt" : "Contact"}</h4>${phone ? `<a href="tel:${phone}">${phone}</a>` : ""}${email ? `<a href="mailto:${email}">${email}</a>` : ""}${addr ? `<div>${addr}</div>` : input.city ? `<div>${input.city}</div>` : ""}</div>
   </div>
+  <div class="foot-bottom">© ${year} ${input.businessName}. ${de ? "Alle Rechte vorbehalten." : "All rights reserved."} · ${de ? "Website-Konzept von" : "Website concept by"} WLABS</div>
 </footer>
 
 <script>
-  // Sticky nav
-  const nav = document.getElementById('main-nav');
-  window.addEventListener('scroll', () => { nav.classList.toggle('scrolled', window.scrollY > 60); }, { passive: true });
-
-  // Smooth scroll
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener('click', e => {
-      const target = document.querySelector(a.getAttribute('href'));
-      if (target) { e.preventDefault(); target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-    });
-  });
-
-  // Scroll reveal
-  const revealObs = new IntersectionObserver(
-    entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
-    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
-  );
-  document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
-
-  // Mobile menu
-  function toggleMobile() {
-    document.getElementById('mobile-menu').classList.toggle('open');
-  }
-  function closeMobile() {
-    document.getElementById('mobile-menu').classList.remove('open');
-  }
+  var bar=document.getElementById('bar');
+  addEventListener('scroll',function(){ bar.classList.toggle('scrolled', scrollY>12); },{passive:true});
+  document.querySelectorAll('a[href^="#"]').forEach(function(a){ a.addEventListener('click',function(e){ var t=document.querySelector(a.getAttribute('href')); if(t){ e.preventDefault(); t.scrollIntoView({behavior:'smooth',block:'start'}); } }); });
+  var io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); } }); },{threshold:0.1, rootMargin:'0px 0px -8% 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+  function openMenu(){ document.getElementById('overlay').classList.add('open'); }
+  function closeMenu(){ document.getElementById('overlay').classList.remove('open'); }
 </script>
 </body>
 </html>`;
@@ -679,12 +706,12 @@ export class WireframeGenerationAgent extends Agent<WireframeInput, WireframeOut
     const aiHtml = await generateText({
       system: WIREFRAME_SYSTEM_PROMPT,
       prompt: buildWireframePrompt(input),
-      temperature: 0.25,
+      temperature: 0.3,
       maxTokens: 16000,
       model: "claude-opus-4-8",
     });
 
-    const wireframeHtml = aiHtml ?? buildMockWireframe(input);
+    const wireframeHtml = aiHtml && aiHtml.includes("</html>") ? aiHtml : buildMockWireframe(input);
     return { wireframeHtml };
   }
 }

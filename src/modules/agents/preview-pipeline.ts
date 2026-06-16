@@ -16,6 +16,8 @@ import { slugify } from "@/lib/utils";
 
 import type { PreviewContent } from "@/modules/generator/preview-types";
 import { sourcePreviewImages } from "@/modules/generator/image-sourcing";
+import { resolveWireframeImages } from "@/modules/generator/stock-images";
+import { industryLabel } from "@/modules/generator/industry-templates";
 
 import { previewGenerationAgent } from "./preview-generation-agent";
 import { previewQcAgent } from "./preview-qc-agent";
@@ -182,9 +184,18 @@ export async function runPreviewGeneration(
   await finishWorkflowRun(run.id, "completed");
 
   // Generate interactive wireframe in background (uses Opus, may take 30–60 s).
+  // Resolve images: prospect-scraped + DALL-E first, industry stock fills the rest.
+  const wireframeScrapedImages = [
+    ...(images.heroImageUrl ? [images.heroImageUrl] : []),
+    ...images.galleryImages.map((g) => g.url),
+    ...(extracted?.imageUrls ?? []),
+  ];
+  const wireframeImages = resolveWireframeImages(wireframeScrapedImages, lead.industry);
+
   const wireframeInput = {
     businessName: lead.businessName,
     industry: lead.industry,
+    industryLabel: industryLabel(lead.industry),
     city: lead.city ?? null,
     country: lead.country ?? null,
     contactPhone: lead.contactPhone ?? null,
@@ -197,7 +208,9 @@ export async function runPreviewGeneration(
     extractedH1: capture?.h1 ?? null,
     extractedMetaDescription: capture?.metaDescription ?? null,
     extractedText: capture?.extractedText ? capture.extractedText.slice(0, 3000) : null,
-    imageUrls: extracted?.imageUrls ?? [],
+    heroImageUrl: wireframeImages.heroImageUrl,
+    philosophyImageUrl: wireframeImages.philosophyImageUrl,
+    galleryImages: wireframeImages.galleryImages,
     brandColors: extracted?.brandColors ?? [],
     addressHint: extracted?.addressHints?.[0] ?? null,
     language: (["de", "at", "ch", "germany", "austria", "switzerland", "deutschland", "österreich", "schweiz"].some(

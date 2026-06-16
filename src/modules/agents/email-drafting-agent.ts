@@ -156,15 +156,15 @@ function buildEmail(input: EmailDraftingInput): { subject: string; body: string;
     case "direct_preview":
       if (lang === "de") {
         return {
-          subject: `Ein modernes Website-Konzept für ${input.businessName}`,
+          subject: `Ein interaktives Website-Konzept für ${input.businessName}`,
           ctaType: "preview",
           body: `${g}
 
-Ich bin auf Ihre Website aufmerksam geworden und habe ein modernes Homepage-Konzept für ${input.businessName} entwickelt:
+Ich bin auf Ihre Website aufmerksam geworden und habe ein interaktives Design-Konzept (Wireframe) für ${input.businessName} erstellt – Sie können direkt durch die Seiten klicken und scrollen:
 
 ${preview ?? "[Vorschau-Link]"}
 
-Es ist nur eine Vorschau, zeigt aber, wie Ihre Website mit klaren Botschaften, mobilem Design und sichtbaren Kontaktmöglichkeiten aussehen könnte.
+Es ist nur ein Konzept, zeigt aber, wie Ihre Website mit klaren Botschaften, echten Bildern, mobilem Design und sichtbaren Kontaktmöglichkeiten aussehen und sich anfühlen könnte.
 
 ${priceLine(lang, input)} Soll ich die Liveversion vorbereiten?${bookingLine(lang, input)}
 
@@ -174,15 +174,15 @@ ${opt}`,
         };
       }
       return {
-        subject: `A modern homepage concept for ${input.businessName}`,
+        subject: `An interactive website concept for ${input.businessName}`,
         ctaType: "preview",
         body: `${g}
 
-I came across your website and put together a quick, modern homepage concept for ${input.businessName}:
+I came across your website and built an interactive design concept (wireframe) for ${input.businessName} — you can click through and scroll the pages yourself:
 
 ${preview ?? "[preview link]"}
 
-It's only a preview, but it shows how your site could look with clearer messaging, stronger mobile design, and more visible contact options.
+It's only a concept, but it shows how your site could look and feel with clearer messaging, real imagery, stronger mobile design, and more visible contact options.
 
 ${priceLine(lang, input)} Would you like me to prepare the launch version?${bookingLine(lang, input)}
 
