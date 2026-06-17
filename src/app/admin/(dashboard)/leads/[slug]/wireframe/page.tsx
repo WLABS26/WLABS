@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { getLeadBySlug } from "@/modules/crm/leads";
+import { isMockProvider } from "@/lib/ai/provider";
 import type { WireframeChatMessage } from "./actions";
 import { WireframeChat } from "./wireframe-chat";
 
@@ -37,10 +38,12 @@ export default async function WireframeEditorPage({ params }: WireframeEditorPag
 
   const wireframeUrl = `/api/wireframe/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`;
   const chat = (preview.wireframeChatJson as WireframeChatMessage[] | null) ?? [];
+  const aiEnabled = !isMockProvider();
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col gap-0 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/10 shrink-0">
+    // Full-bleed: cancel the dashboard container's padding so the editor uses the whole main area.
+    <div className="-mx-4 -my-6 flex h-[100dvh] flex-col overflow-hidden sm:-mx-6 lg:-mx-8 lg:-my-10">
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/10 shrink-0">
         <Link href={`/admin/leads/${slug}`} className="flex items-center gap-1.5 text-sm text-muted hover:text-white">
           <ArrowLeft className="size-4" />
           {lead.businessName}
@@ -60,13 +63,13 @@ export default async function WireframeEditorPage({ params }: WireframeEditorPag
         </div>
 
         {/* Right: chat panel */}
-        <div className="w-80 shrink-0 border-l border-white/10 flex flex-col bg-[#0f1117]">
+        <div className="flex w-[400px] shrink-0 flex-col border-l border-white/10 bg-[#0f1117] xl:w-[460px]">
           <div className="px-4 py-3 border-b border-white/10 shrink-0">
             <p className="text-sm font-medium text-white">Change requests</p>
             <p className="text-xs text-muted">Opus rewrites the wireframe on each send</p>
           </div>
           <div className="flex-1 overflow-hidden">
-            <WireframeChat previewId={preview.id} leadSlug={slug} initialChat={chat} />
+            <WireframeChat previewId={preview.id} leadSlug={slug} initialChat={chat} aiEnabled={aiEnabled} />
           </div>
         </div>
       </div>

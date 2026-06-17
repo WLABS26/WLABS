@@ -69,11 +69,12 @@ class AnthropicProvider implements AIProvider {
   readonly name = "anthropic" as const;
   constructor(
     private apiKey: string,
-    private model = "claude-sonnet-4-6",
+    private model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
   ) {}
 
   async complete(options: AICompleteOptions): Promise<string> {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const baseUrl = process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, "") ?? "https://api.anthropic.com";
+    const res = await fetch(`${baseUrl}/v1/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

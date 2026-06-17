@@ -938,6 +938,9 @@ function buildMockWireframe(input: WireframeInput): string {
 // Wireframe refinement (admin editor — apply a targeted change request)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Top-tier model for wireframe generation/refinement. Overridable via env so a real key works without code edits. */
+const WIREFRAME_MODEL = process.env.WIREFRAME_MODEL || "claude-opus-4-8";
+
 const WIREFRAME_REFINE_SYSTEM_PROMPT = `You are editing an existing self-contained HTML wireframe for a business prospect. Apply ONLY the requested change — preserve every other section, style, and script exactly as-is. Absolute rules still apply:
 - Never add fabricated reviews, star ratings, award badges, or statistics.
 - Keep all inline CSS and JS; no external script/style src attributes.
@@ -955,7 +958,7 @@ export async function refineWireframe(params: {
   const result = await generateText({
     system: WIREFRAME_REFINE_SYSTEM_PROMPT,
     prompt,
-    model: "claude-opus-4-8",
+    model: WIREFRAME_MODEL,
     maxTokens: 16000,
     temperature: 0.2,
   });
@@ -977,7 +980,7 @@ export class WireframeGenerationAgent extends Agent<WireframeInput, WireframeOut
       prompt: buildWireframePrompt(input),
       temperature: 0.3,
       maxTokens: 16000,
-      model: "claude-opus-4-8",
+      model: WIREFRAME_MODEL,
     });
 
     const wireframeHtml = aiHtml && aiHtml.includes("</html>") ? aiHtml : buildMockWireframe(input);

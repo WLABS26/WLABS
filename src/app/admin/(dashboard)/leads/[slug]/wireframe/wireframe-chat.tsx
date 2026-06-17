@@ -14,10 +14,12 @@ export function WireframeChat({
   previewId,
   leadSlug,
   initialChat,
+  aiEnabled = true,
 }: {
   previewId: string;
   leadSlug: string;
   initialChat: WireframeChatMessage[];
+  aiEnabled?: boolean;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(refineWireframeAction, initial);
@@ -70,17 +72,23 @@ export function WireframeChat({
       <form action={formAction} className="border-t border-white/10 p-3 space-y-2">
         <input type="hidden" name="previewId" value={previewId} />
         <input type="hidden" name="leadSlug" value={leadSlug} />
+        {!aiEnabled && (
+          <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            AI editing is disabled in mock mode. Set <code className="text-amber-200">AI_PROVIDER=anthropic</code> and{" "}
+            <code className="text-amber-200">ANTHROPIC_API_KEY</code> to enable live wireframe edits.
+          </p>
+        )}
         <Textarea
           ref={textareaRef}
           name="instruction"
-          placeholder="Describe the change you want…"
+          placeholder={aiEnabled ? "Describe the change you want…" : "Configure an AI provider to enable editing"}
           rows={3}
           required
-          disabled={pending}
+          disabled={pending || !aiEnabled}
           className="resize-none"
         />
         {state?.error && <p className="text-xs text-red-400">{state.error}</p>}
-        <Button type="submit" size="sm" className="w-full" disabled={pending}>
+        <Button type="submit" size="sm" className="w-full" disabled={pending || !aiEnabled}>
           {pending ? "Applying…" : "Send"}
         </Button>
       </form>
