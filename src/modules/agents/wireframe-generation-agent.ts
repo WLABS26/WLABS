@@ -159,6 +159,175 @@ const INDUSTRY_PALETTE: Record<string, keyof typeof PALETTES> = {
   other: "slate",
 };
 
+// Per-industry inline SVG inner paths (white stroke, 24×24 viewBox).
+const INDUSTRY_LOGO_SVGS: Record<string, string> = {
+  dentist:        `<path d="M12 2c-2.2 0-4 1.8-5 4-.7 1.4-1 3-1 4.5 0 4 1.5 7 3.5 9 .5.5 1 .5 2 .5h.5c.5 0 .5-.5.5-1.5v-2c0-.6.3-1 .5-1s.5.4.5 1v2c0 1 0 1.5.5 1.5H14c1 0 1.5 0 2-.5 2-2 3.5-5 3.5-9 0-1.5-.3-3-1-4.5C17.5 3.8 16 2 14 2h-2Z" stroke="#fff" stroke-width="1.7" fill="none"/>`,
+  physiotherapist:`<circle cx="12" cy="4.5" r="2.5" stroke="#fff" stroke-width="1.7" fill="none"/><path d="M7 11c1.2-2 3-3.5 5-4.5 2 1 3.8 2.5 5 4.5M7 22l2-7m8 7-2-7" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>`,
+  plumber:        `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3-3a6 6 0 0 1-7.5 7.5L6.2 20.5a2.12 2.12 0 0 1-3-3L10.5 9a6 6 0 0 1 7.5-7.5l-3 3Z" stroke="#fff" stroke-width="1.7" fill="none"/>`,
+  electrician:    `<path d="M13 2 4 14h8l-1 8 9-12h-8l1-8Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round" fill="none"/>`,
+  lawyer:         `<path d="M12 3v18M6 6.5h12M4 10.5l4 8H4l4-8ZM20 10.5l-4 8h8l-4-8Z" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  accountant:     `<rect x="4" y="2" width="16" height="20" rx="3" stroke="#fff" stroke-width="1.7" fill="none"/><path d="M8 7h8M8 12h2m4 0h2M8 17h2m4 0h2" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>`,
+  real_estate:    `<path d="m3 10 9-8 9 8v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round" fill="none"/><path d="M9 21V13h6v8" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>`,
+  restaurant:     `<path d="M5 3v18M5 8a4 4 0 0 1 4 4H5M19 3v4a4 4 0 0 1-4 4v10" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"/>`,
+  beauty_clinic:  `<path d="m12 2 2.4 7.4H22l-6.2 4.5 2.3 7.3L12 17l-6.1 4.2 2.3-7.3L2 9.4h7.6L12 2Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round" fill="none"/>`,
+  construction:   `<path d="M2 20h20M8 20V9l4-4 4 4v11M8 13h8" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  other:          `<rect x="2" y="7" width="20" height="14" rx="3" stroke="#fff" stroke-width="1.7" fill="none"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>`,
+};
+
+// Per-industry copy templates: headlines, service cards, chips, philosophy H2.
+const IC: Record<string, {
+  hDe: string; hEn: string;
+  subDe(n: string, c: string | null): string; subEn(n: string, c: string | null): string;
+  svcs: [string, string, string, string][]; // [de-title, de-desc, en-title, en-desc]
+  chips: [string[], string[]]; // [de[], en[]]
+  philH2De: string; philH2En: string;
+  videoLabelDe: string; videoLabelEn: string;
+}> = {
+  dentist: {
+    hDe: "Zahnmedizin,<br>die sich gut<br>anfühlt.", hEn: "Dentistry<br>that feels<br>as good as it looks.",
+    subDe: (n, c) => `${n} bietet moderne Zahnheilkunde auf höchstem Niveau${c ? ` in ${c}` : ""} — für ein gesundes, strahlendes Lächeln.`,
+    subEn: (n, c) => `${n} combines expert dentistry with personal care${c ? ` in ${c}` : ""} — for a healthy, confident smile.`,
+    svcs: [
+      ["Prophylaxe & Hygiene", "Professionelle Reinigung und Prävention für gesundes Zahnfleisch und strahlend weiße Zähne.", "Hygiene & Prevention", "Professional cleaning and preventive care to keep your teeth and gums healthy."],
+      ["Ästhetik & Bleaching", "Modernes Bleaching und ästhetische Zahnheilkunde für Ihr natürliches Traumlächeln.", "Cosmetic & Whitening", "Modern whitening and cosmetic treatments for a naturally beautiful smile."],
+      ["Implantate & Prothetik", "Hochwertige Implantate und Zahnersatz — stabil, natürlich und langlebig.", "Implants & Prosthetics", "Premium implants and prosthetics — stable, natural-looking and long-lasting."],
+    ],
+    chips: [["Prophylaxe", "Bleaching", "Implantate", "Zahnersatz", "Kinderzahnheilkunde", "Notfalltermine"], ["Hygiene", "Teeth whitening", "Implants", "Prosthetics", "Children's dentistry", "Emergency care"]],
+    philH2De: "Damit Sie gern zum Zahnarzt gehen.", philH2En: "So you actually look forward to your appointment.",
+    videoLabelDe: "Praxis-Rundgang", videoLabelEn: "Practice tour",
+  },
+  physiotherapist: {
+    hDe: "Physiotherapie,<br>die wirklich<br>wirkt.", hEn: "Physiotherapy<br>that actually<br>works.",
+    subDe: (n, c) => `${n} bringt Sie${c ? ` in ${c}` : ""} schnell zurück in Bewegung — mit individuellen Behandlungen und echtem Fachwissen.`,
+    subEn: (n, c) => `${n} gets you moving again${c ? ` in ${c}` : ""} — with tailored treatments and genuine expertise.`,
+    svcs: [
+      ["Manuelle Therapie", "Gezielte manuelle Behandlung von Gelenken und Muskeln für schnelle, nachhaltige Beschwerdefreiheit.", "Manual Therapy", "Targeted manual treatment of joints and muscles for fast, lasting relief."],
+      ["Krankengymnastik", "Individuelle Übungsprogramme zur Wiederherstellung und Stärkung Ihrer Mobilität.", "Therapeutic Exercise", "Individual exercise programmes to restore and strengthen your mobility."],
+      ["Sportphysiotherapie", "Gezielte Rehabilitation nach Verletzungen — für eine schnelle und sichere Rückkehr zum Sport.", "Sports Physio", "Targeted rehabilitation after injuries — for a safe, fast return to sport."],
+    ],
+    chips: [["Manuelle Therapie", "Rückenbehandlung", "Sportrehab", "Neurologie", "Hausbesuche", "Krankenkasse"], ["Manual therapy", "Back pain", "Sports rehab", "Neurology", "Home visits", "Insurance accepted"]],
+    philH2De: "Mehr Lebensqualität durch gezielte Bewegungstherapie.", philH2En: "Better quality of life through targeted movement therapy.",
+    videoLabelDe: "Praxis ansehen", videoLabelEn: "Tour our clinic",
+  },
+  plumber: {
+    hDe: "Schnell.<br>Zuverlässig.<br>Ihr Profi vor Ort.", hEn: "Fast.<br>Reliable.<br>Your local expert.",
+    subDe: (n, c) => `${n} steht für professionelle Sanitär- und Installationsarbeiten${c ? ` in ${c}` : ""} — pünktlich, sauber und zum fairen Preis.`,
+    subEn: (n, c) => `${n} delivers professional plumbing and installation${c ? ` in ${c}` : ""} — on time, tidy and at a fair price.`,
+    svcs: [
+      ["Rohrbruch & Notfall", "24-Stunden-Notdienst bei Rohrbruch, Wasserschäden und Lecks — wir sind schnell bei Ihnen.", "Emergency Plumbing", "24-hour emergency service for burst pipes, water damage and leaks — fast response guaranteed."],
+      ["Sanitärinstallation", "Installation und Modernisierung von Bädern, WCs und Wasseranschlüssen nach Maß.", "Bathroom & Plumbing", "Installation and modernisation of bathrooms, toilets and water connections."],
+      ["Heizung & Wartung", "Heizungswartung, Reparatur und Neuinstallation — für maximale Effizienz und Sicherheit.", "Heating & Maintenance", "Heating maintenance, repair and new installation — for maximum efficiency and safety."],
+    ],
+    chips: [["Notdienst 24/7", "Rohrbruch", "Badezimmer", "Heizung", "Wartung", "Sanierung"], ["24/7 emergency", "Burst pipes", "Bathrooms", "Heating", "Maintenance", "Renovation"]],
+    philH2De: "Sauber gemacht — beim ersten Mal.", philH2En: "Done right — the first time.",
+    videoLabelDe: "So arbeiten wir", videoLabelEn: "See how we work",
+  },
+  electrician: {
+    hDe: "Elektro,<br>das hält.<br>Sicher & verlässlich.", hEn: "Electrical work<br>that lasts.<br>Safe & reliable.",
+    subDe: (n, c) => `${n} liefert sichere Elektroinstallationen${c ? ` in ${c}` : ""} — termingerecht, fachgerecht und nach neusten Normen.`,
+    subEn: (n, c) => `${n} provides safe electrical installations${c ? ` in ${c}` : ""} — on schedule, to code and built to last.`,
+    svcs: [
+      ["Elektroinstallation", "Komplette Neuinstallation und Erweiterung von Elektrosystemen in Wohn- und Gewerbegebäuden.", "Electrical Installation", "Complete new installation and extension of electrical systems in residential and commercial buildings."],
+      ["Smart Home", "Moderne Smart-Home-Lösungen — Licht, Heizung und Sicherheit intelligent gesteuert.", "Smart Home", "Modern smart home solutions — lighting, heating and security intelligently controlled."],
+      ["Notdienst & Reparatur", "Schnelle Fehlersuche und Reparatur bei Störungen und Ausfällen — auch am Wochenende.", "Emergency & Repair", "Fast fault-finding and repair for outages and faults — including weekends."],
+    ],
+    chips: [["Notdienst", "Smart Home", "Photovoltaik", "Zählerkasten", "Beleuchtung", "Inspektion"], ["Emergency", "Smart home", "Solar/PV", "Switchboard", "Lighting", "Inspection"]],
+    philH2De: "Strom, dem Sie vertrauen können.", philH2En: "Electricity you can count on.",
+    videoLabelDe: "Referenzen ansehen", videoLabelEn: "See our work",
+  },
+  lawyer: {
+    hDe: "Ihr Recht.<br>Unser Einsatz.<br>Ihr Erfolg.", hEn: "Your rights.<br>Our expertise.<br>Your outcome.",
+    subDe: (n, c) => `${n} vertritt Ihre Interessen${c ? ` in ${c}` : ""} mit Klarheit, Entschlossenheit und dem Engagement, das Ihr Fall verdient.`,
+    subEn: (n, c) => `${n} represents your interests${c ? ` in ${c}` : ""} with clarity, determination and the commitment your case deserves.`,
+    svcs: [
+      ["Arbeitsrecht", "Kündigung, Abfindung, Mobbing — wir setzen Ihre Rechte als Arbeitnehmer konsequent durch.", "Employment Law", "Unfair dismissal, redundancy, workplace disputes — we protect your rights as an employee."],
+      ["Familienrecht", "Scheidung, Sorgerecht, Unterhalt — mit Fingerspitzengefühl und rechtlicher Stärke.", "Family Law", "Divorce, custody, maintenance — handled with care and legal expertise."],
+      ["Vertragsrecht", "Prüfung, Gestaltung und Durchsetzung von Verträgen — klar, sicher und zu Ihren Gunsten.", "Contract Law", "Reviewing, drafting and enforcing contracts — clear, secure and in your favour."],
+    ],
+    chips: [["Arbeitsrecht", "Familienrecht", "Mietrecht", "Vertragsrecht", "Erbrecht", "Erstberatung"], ["Employment", "Family law", "Tenancy", "Contract law", "Inheritance", "Free consultation"]],
+    philH2De: "Komplexes Recht, klar erklärt.", philH2En: "Complex law, explained clearly.",
+    videoLabelDe: "Kanzlei kennenlernen", videoLabelEn: "Meet the firm",
+  },
+  accountant: {
+    hDe: "Zahlen,<br>die für Sie<br>arbeiten.", hEn: "Numbers<br>working<br>for you.",
+    subDe: (n, c) => `${n} bringt Klarheit in Ihre Finanzen${c ? ` in ${c}` : ""} — mit fundierter Beratung, die Ihnen Zeit und Geld spart.`,
+    subEn: (n, c) => `${n} brings clarity to your finances${c ? ` in ${c}` : ""} — with expert advice that saves you time and money.`,
+    svcs: [
+      ["Steuerberatung", "Steuererklärungen, Optimierung und Jahresabschlüsse — fristgerecht und rechtssicher.", "Tax Advisory", "Tax returns, optimisation and annual accounts — filed on time and fully compliant."],
+      ["Buchhaltung", "Laufende Buchhaltung, Lohnabrechnung und Jahresabschlüsse für KMU und Selbstständige.", "Bookkeeping", "Ongoing bookkeeping, payroll and annual accounts for SMEs and self-employed."],
+      ["Unternehmensberatung", "Strategie, Liquiditätsplanung und betriebswirtschaftliche Analyse für Wachstum und Stabilität.", "Business Advisory", "Strategy, cash flow planning and financial analysis for growth and stability."],
+    ],
+    chips: [["Steuererklärung", "Jahresabschluss", "Lohnabrechnung", "Beratung", "Gründung", "GmbH"], ["Tax returns", "Annual accounts", "Payroll", "Business advice", "Company formation", "VAT"]],
+    philH2De: "Klare Zahlen, starke Entscheidungen.", philH2En: "Clear numbers, strong decisions.",
+    videoLabelDe: "Kanzlei vorstellen", videoLabelEn: "Meet the team",
+  },
+  real_estate: {
+    hDe: "Ihr Zuhause.<br>Unsere Leidenschaft.<br>Ihr Erfolg.", hEn: "Your home.<br>Our passion.<br>Your success.",
+    subDe: (n, c) => `${n} begleitet Sie beim Kauf, Verkauf und der Verwaltung von Immobilien${c ? ` in ${c}` : ""} — persönlich, diskret und marktgerecht.`,
+    subEn: (n, c) => `${n} guides you through buying, selling and managing property${c ? ` in ${c}` : ""} — personally, discreetly and at market value.`,
+    svcs: [
+      ["Immobilienverkauf", "Professionelle Vermarktung, Besichtigungen und Verhandlungen — für den bestmöglichen Verkaufspreis.", "Property Sales", "Professional marketing, viewings and negotiations — for the best possible sale price."],
+      ["Immobilienkauf", "Wir finden Ihre Wunschimmobilie, prüfen sie und begleiten Sie durch den gesamten Kaufprozess.", "Property Purchase", "We find your ideal property, check it thoroughly and guide you through the full purchase process."],
+      ["Verwaltung", "Zuverlässige Mietverwaltung, Nebenkostenabrechnung und Instandhaltung aus einer Hand.", "Property Management", "Reliable rental management, service charge accounts and maintenance — all in one place."],
+    ],
+    chips: [["Wohnungen", "Häuser", "Gewerbe", "Bewertung", "Vermietung", "Verwaltung"], ["Apartments", "Houses", "Commercial", "Valuation", "Rentals", "Management"]],
+    philH2De: "Jede Immobilie hat ihre Geschichte — wir schreiben das nächste Kapitel.", philH2En: "Every property tells a story — we help write the next chapter.",
+    videoLabelDe: "Exposé ansehen", videoLabelEn: "View listings",
+  },
+  restaurant: {
+    hDe: "Genuss,<br>der bleibt.<br>Zu Gast bei uns.", hEn: "Flavour<br>that lingers.<br>Welcome to our table.",
+    subDe: (n, c) => `${n} verwöhnt Sie${c ? ` in ${c}` : ""} mit ehrlichen Gerichten, herzlicher Gastlichkeit und einer Atmosphäre, die Sie loslässt.`,
+    subEn: (n, c) => `${n} welcomes you${c ? ` in ${c}` : ""} with honest dishes, warm hospitality and an atmosphere that makes the outside world disappear.`,
+    svcs: [
+      ["À la Carte", "Saisonale Gerichte aus regionalen Zutaten — täglich frisch zubereitet von unserem Küchen-Team.", "À la Carte", "Seasonal dishes from regional ingredients — freshly prepared daily by our kitchen team."],
+      ["Events & Catering", "Geburtstagspartys, Firmenevents und Jubiläen — wir machen Ihren Anlass unvergesslich.", "Events & Catering", "Birthdays, corporate events and anniversaries — we make your occasion unforgettable."],
+      ["Tischreservierung", "Reservieren Sie Ihren Tisch online oder telefonisch — wir freuen uns auf Ihren Besuch.", "Table Reservations", "Book your table online or by phone — we look forward to welcoming you."],
+    ],
+    chips: [["Mittagstisch", "Abendessen", "Brunch", "Catering", "Gruppenreservierung", "Tischreservierung"], ["Lunch", "Dinner", "Brunch", "Catering", "Group dining", "Reservations"]],
+    philH2De: "Gutes Essen braucht Leidenschaft — und Zeit.", philH2En: "Good food needs passion — and time.",
+    videoLabelDe: "Einblick in die Küche", videoLabelEn: "Kitchen tour",
+  },
+  beauty_clinic: {
+    hDe: "Schönheit,<br>die von innen<br>strahlt.", hEn: "Beauty<br>that radiates<br>from within.",
+    subDe: (n, c) => `${n} verbindet ästhetische Medizin mit ganzheitlicher Beratung${c ? ` in ${c}` : ""} — für natürliche Ergebnisse, die Ihnen einfach gut stehen.`,
+    subEn: (n, c) => `${n} combines aesthetic medicine with holistic consultation${c ? ` in ${c}` : ""} — for natural results that simply suit you.`,
+    svcs: [
+      ["Gesichtsbehandlungen", "Individuell abgestimmte Gesichtspflege — von der klassischen Reinigung bis zur Anti-Aging-Behandlung.", "Facial Treatments", "Individually tailored facial care — from classic cleansing to advanced anti-ageing treatment."],
+      ["Körperpflege & Massagen", "Entspannende und regenerierende Körperbehandlungen für Ihr Wohlbefinden von Kopf bis Fuß.", "Body & Massage", "Relaxing and regenerating body treatments for your wellbeing from head to toe."],
+      ["Ästhetische Medizin", "Botox, Filler und ästhetische Behandlungen — diskret, sicher und mit natürlichem Ergebnis.", "Aesthetic Medicine", "Botox, fillers and aesthetic treatments — discreet, safe and with natural-looking results."],
+    ],
+    chips: [["Gesicht", "Anti-Aging", "Massagen", "Laser", "Nägel", "Beratung"], ["Facials", "Anti-ageing", "Massages", "Laser", "Nails", "Consultation"]],
+    philH2De: "Schönheit ist keine Frage des Alters — sondern der richtigen Pflege.", philH2En: "Beauty isn't about age — it's about the right care.",
+    videoLabelDe: "Klinik entdecken", videoLabelEn: "Discover our clinic",
+  },
+  construction: {
+    hDe: "Gebaut,<br>um zu bleiben.<br>Solide & pünktlich.", hEn: "Built<br>to last.<br>Solid & on schedule.",
+    subDe: (n, c) => `${n} realisiert Bauprojekte${c ? ` in ${c}` : ""} auf höchstem Niveau — von der Planung bis zur Schlüsselübergabe, termingerecht und transparent.`,
+    subEn: (n, c) => `${n} delivers construction projects${c ? ` in ${c}` : ""} to the highest standards — from planning to handover, on time and transparent.`,
+    svcs: [
+      ["Neubau", "Vom Entwurf bis zum bezugsfertigen Haus — wir planen, bauen und übergeben schlüsselfertig.", "New Build", "From design to move-in ready — we plan, build and hand over your home on a turnkey basis."],
+      ["Sanierung & Umbau", "Umfassende Renovierung und energetische Sanierung — für mehr Komfort, Wert und Nachhaltigkeit.", "Renovation", "Comprehensive renovation and energy-efficient refurbishment — for more comfort, value and sustainability."],
+      ["Projektmanagement", "Terminplanung, Kostenkontrolle und Qualitätssicherung — für einen reibungslosen Bauablauf.", "Project Management", "Scheduling, cost control and quality assurance — for a smooth construction process."],
+    ],
+    chips: [["Neubau", "Sanierung", "Rohbau", "Innenausbau", "Fassade", "Planung"], ["New build", "Renovation", "Shell construction", "Interior fit-out", "Facade", "Planning"]],
+    philH2De: "Jedes Haus verdient ein starkes Fundament.", philH2En: "Every home deserves a strong foundation.",
+    videoLabelDe: "Referenzprojekte", videoLabelEn: "Our projects",
+  },
+  other: {
+    hDe: "Professionell.<br>Persönlich.<br>Für Sie da.", hEn: "Professional.<br>Personal.<br>Here for you.",
+    subDe: (n, c) => `${n} bietet hochwertige Leistungen${c ? ` in ${c}` : ""} — zuverlässig, transparent und ganz auf Ihre Bedürfnisse abgestimmt.`,
+    subEn: (n, c) => `${n} delivers quality services${c ? ` in ${c}` : ""} — reliable, transparent and shaped entirely around your needs.`,
+    svcs: [
+      ["Kernleistung", "Professionelle Beratung und Umsetzung für nachhaltige, sichtbare Ergebnisse.", "Core service", "Expert advice and delivery focused on lasting, visible results."],
+      ["Maßgeschneidert", "Individuelle Lösungen, exakt abgestimmt auf Ihre Wünsche und Ihr Budget.", "Tailored", "Individual solutions shaped precisely around your goals and budget."],
+      ["Rundum-Service", "Von der ersten Beratung bis zur Nachbetreuung — alles aus einer Hand.", "End to end", "From first consultation to aftercare — all in one place."],
+    ],
+    chips: [["Erstberatung", "Beratung vor Ort", "Individuelle Lösungen", "Schneller Service", "Faire Preise", "Nachbetreuung"], ["Free consultation", "On-site visits", "Tailored solutions", "Fast turnaround", "Fair pricing", "Aftercare"]],
+    philH2De: "Damit Sie sich gut aufgehoben fühlen.", philH2En: "So you feel in safe hands.",
+    videoLabelDe: "Unternehmen vorstellen", videoLabelEn: "Meet us",
+  },
+};
+
 function getPalette(industry: string): Palette {
   return PALETTES[INDUSTRY_PALETTE[industry] ?? "slate"];
 }
@@ -203,6 +372,24 @@ The gold standard is a calm, content-rich, multi-section marketing page with ALL
 Use the EXACT image URLs provided in the prompt for hero, philosophy, and gallery. Embed as <img> with object-fit:cover. EVERY <img> MUST include this exact onerror so a broken image degrades to its gradient frame, never a broken icon:
 onerror="this.style.display='none'"
 …and its parent container must already have a palette gradient background behind the image.
+
+━━━ COPY GHOSTWRITING (most important content rule) ━━━
+Study the EXISTING SITE CONTEXT provided in the prompt. The prospect's own words — their H1, title, meta description, and extracted text — are gold. Your job is to ghostwrite: extract the core services, specialisms, and tone from their site, then elevate the copy with professional marketing language. Do NOT use generic placeholder phrases like "professional service" or "high quality work". Instead:
+- Hero H1: derive from the site's H1/title — make it punchy, 3-line, max 6 words per line.
+- Service card titles: use the actual services the prospect mentions on their site.
+- About/philosophy: weave in what the business says about itself, then enhance with benefit-led language.
+- Chips: list the exact specialisms/treatments/offerings extracted from their page.
+When the extracted text is missing or too sparse, use industry-specific copy appropriate for a leading business in that sector.
+
+━━━ BRAND IDENTITY ━━━
+- If brand colors are provided (non-empty), use them as the primary palette color. Build the tint and interaction states from the brand color.
+- The NAV logo mark MUST use an inline SVG icon that matches the industry: tooth for dental/physio, scales for legal, house for real estate, fork+knife for restaurant, wrench for plumber, lightning bolt for electrician, star for beauty/wellness, hard hat/building for construction, calculator for accountant. NEVER use a shield or generic checkmark.
+
+━━━ ADDRESS FORMATTING ━━━
+When an address is provided, always display it on multiple lines (street on line 1, postcode+city on line 2, country if present on line 3). Never concatenate address parts into a single long string.
+
+━━━ VIDEO CARD IN HERO ━━━
+The second floating card (float-b) MUST be a video play card — a white pill with a play button SVG + label (e.g. "Praxis-Rundgang" / "Virtual Tour"). If a video URL is found in the extracted text, wire it to open a modal iframe. Otherwise wire it to open a styled modal with a placeholder and a link to the prospect's website. This is one of the highest-impact sales elements: it shows interactivity and makes the wireframe feel real.
 
 ━━━ ABSOLUTE RULES ━━━
 1. NEVER fabricate specific testimonials, named reviews, star ratings, review counts, awards, certifications, or statistics. The reviews section is an explicit honest placeholder (see #9). Floating hero cards never show fake ratings/counts.
@@ -260,27 +447,54 @@ Produce the full HTML now.`;
 // Mock fallback — benchmark-quality template (used when no AI provider)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Format a raw address string into HTML lines (split on commas). */
+function formatAddress(raw: string | null): string {
+  if (!raw) return "";
+  const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  return parts.length <= 1 ? raw : parts.join("<br>");
+}
+
+/** Try to extract a YouTube or Vimeo embed URL from crawled page text. */
+function extractVideoUrl(text: string | null): string | null {
+  if (!text) return null;
+  const yt = text.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}?autoplay=1`;
+  const vimeo = text.match(/vimeo\.com\/(\d{6,})/);
+  if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}?autoplay=1`;
+  return null;
+}
+
 function img(src: string, alt: string, extra = ""): string {
   return `<img src="${src}" alt="${alt}" loading="lazy" onerror="this.style.display='none'" style="width:100%; height:100%; object-fit:cover; ${extra}">`;
 }
 
 function buildMockWireframe(input: WireframeInput): string {
-  const p = getPalette(input.industry);
+  // Apply brand color override when detected hex exists.
+  const detectedBrand = input.brandColors.find((c) => /^#[0-9A-Fa-f]{6}$/i.test(c.trim()));
+  const basePalette = getPalette(input.industry);
+  const p = detectedBrand ? { ...basePalette, primary: detectedBrand, primaryDark: detectedBrand } : basePalette;
+
   const year = new Date().getFullYear();
   const de = input.language === "de";
   const phone = input.contactPhone;
   const email = input.contactEmail;
   const addr = input.addressHint;
+  const addrHtml = formatAddress(addr);
   const label = input.industryLabel;
   const gallery = input.galleryImages.length >= 3 ? input.galleryImages : [input.heroImageUrl, input.philosophyImageUrl, input.heroImageUrl];
+  const logoSvg = INDUSTRY_LOGO_SVGS[input.industry] ?? INDUSTRY_LOGO_SVGS.other;
+  const ic = IC[input.industry] ?? IC.other;
+  const videoUrl = extractVideoUrl(input.extractedText);
 
   const nav = de ? ["Start", "Leistungen", "Über uns", "Kontakt"] : ["Home", "Services", "About", "Contact"];
   const navHref = ["#top", "#services", "#about", "#contact"];
   const ctaLabel = de ? "Termin anfragen" : "Get in touch";
-  const heroTitle = de ? `Professionell.<br>Persönlich.<br>In ${input.city ?? "Ihrer Nähe"}.` : `Professional.<br>Personal.<br>Local to ${input.city ?? "you"}.`;
-  const heroSub = de
-    ? `${input.businessName} bietet hochwertige ${label}-Leistungen — verständlich, zuverlässig und auf Sie persönlich abgestimmt.`
-    : `${input.businessName} delivers high-quality ${label.toLowerCase()} — clear, reliable and built entirely around you.`;
+  const heroTitle = de ? ic.hDe : ic.hEn;
+  const heroSub = de ? ic.subDe(input.businessName, input.city) : ic.subEn(input.businessName, input.city);
+  const philH2 = de ? ic.philH2De : ic.philH2En;
+  const videoLabel = de ? ic.videoLabelDe : ic.videoLabelEn;
+  const chips = de ? ic.chips[0] : ic.chips[1];
+  const svcs = ic.svcs.map((s) => (de ? [s[0], s[1]] : [s[2], s[3]]));
 
   const reviewNote = de ? "Platzhalter — hier erscheinen Ihre echten Bewertungen" : "Placeholder — your real reviews will appear here";
   const sampleReviews = de
@@ -294,10 +508,6 @@ function buildMockWireframe(input: WireframeInput): string {
         "On-time appointments, short waits, and everything explained clearly. Highly recommend.",
         "Professional, reliable and personal — exactly the kind of local service you hope to find.",
       ];
-
-  const chips = de
-    ? ["Erstberatung", "Beratung vor Ort", "Individuelle Lösungen", "Schneller Service", "Faire Preise", "Nachbetreuung"]
-    : ["Free consultation", "On-site visits", "Tailored solutions", "Fast turnaround", "Fair pricing", "Aftercare"];
 
   return `<!DOCTYPE html>
 <html lang="${input.language}">
@@ -467,6 +677,16 @@ function buildMockWireframe(input: WireframeInput): string {
   .foot-col a:hover{ color:#fff; }
   .foot-bottom{ border-top:1px solid rgba(255,255,255,.1); padding-top:24px; max-width:1200px; margin:0 auto; font-size:13px; color:${p.onDarkMuted}; }
 
+  /* Video modal */
+  .vid-modal{ display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,.88); align-items:center; justify-content:center; flex-direction:column; gap:20px; }
+  .vid-modal.open{ display:flex; }
+  .vid-close{ position:absolute; top:24px; right:24px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:22px; width:44px; height:44px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .vid-close:hover{ background:rgba(255,255,255,.25); }
+  .vid-frame{ width:min(860px,90vw); aspect-ratio:16/9; border-radius:16px; overflow:hidden; background:#000; }
+  .vid-placeholder{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:40px; }
+  .float-card.video-card{ cursor:pointer; }
+  .float-card.video-card:hover{ box-shadow:0 28px 52px -18px rgba(30,40,35,.55); }
+
   @media(max-width:980px){
     .hero{ grid-template-columns:1fr; gap:40px; } .stats{ gap:24px; }
     .cards,.rev-grid,.gal{ grid-template-columns:1fr 1fr; }
@@ -492,7 +712,7 @@ function buildMockWireframe(input: WireframeInput): string {
 
 <nav id="bar"><div class="navrow" id="top">
   <a href="#top" class="logo">
-    <span class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M12 2 4 5v6c0 5 3.4 8.6 8 11 4.6-2.4 8-6 8-11V5l-8-3Z" stroke="#fff" stroke-width="1.7" fill="none"/><path d="m9 12 2 2 4-4" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <span class="logo-mark"><svg width="21" height="21" viewBox="0 0 24 24" fill="none">${logoSvg}</svg></span>
     <span><span class="logo-name">${input.businessName}</span><br><span class="logo-sub">${label}${input.city ? ` · ${input.city}` : ""}</span></span>
   </a>
   <div class="navlinks">
@@ -529,11 +749,29 @@ function buildMockWireframe(input: WireframeInput): string {
       <span class="float-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <div><div style="font-size:14px; font-weight:700; color:${p.ink};">${de ? "Geprüfte Qualität" : "Trusted quality"}</div><div style="font-size:12px; color:${p.muted};">${de ? "Persönlich & lokal" : "Personal & local"}</div></div>
     </div>
-    <div class="float-card float-b">
-      <div><div style="font-size:14px; font-weight:700; color:${p.ink};">${de ? "Schnelle Antwort" : "Fast response"}</div><div style="font-size:12px; color:${p.muted};">${de ? "Innerhalb 24 Std." : "Within 24 hours"}</div></div>
+    <div class="float-card float-b video-card" onclick="document.getElementById('vid-modal').classList.add('open')">
+      <span class="float-ico" style="background:${p.primary};"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polygon points="8,5 20,12 8,19" fill="#fff"/></svg></span>
+      <div><div style="font-size:14px; font-weight:700; color:${p.ink};">${videoLabel}</div><div style="font-size:12px; color:${p.muted};">${de ? "Jetzt ansehen →" : "Watch now →"}</div></div>
     </div>
   </div>
 </div></section>
+
+<!-- VIDEO MODAL -->
+<div class="vid-modal" id="vid-modal" onclick="if(event.target===this)this.classList.remove('open')">
+  <button class="vid-close" onclick="document.getElementById('vid-modal').classList.remove('open')">✕</button>
+  <div class="vid-frame">
+    ${videoUrl
+      ? `<iframe src="${videoUrl}" width="100%" height="100%" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`
+      : `<div class="vid-placeholder" style="background:linear-gradient(135deg,${p.deep},${p.deepEnd}); color:#fff;">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,.3)" stroke-width="1.5"/><polygon points="10,8 18,12 10,16" fill="${p.primary}"/></svg>
+          <div style="font-family:'${p.fontHead}',sans-serif; font-size:22px; font-weight:700;">${videoLabel}</div>
+          <p style="font-size:15px; opacity:.65; max-width:300px; line-height:1.5;">${de ? "Besuchen Sie unsere Website für einen virtuellen Rundgang durch unsere Räumlichkeiten." : "Visit our website for a virtual tour of our premises."}</p>
+          ${input.websiteUrl ? `<a href="${input.websiteUrl}" target="_blank" rel="noopener" style="background:${p.primary}; color:#fff; padding:12px 26px; border-radius:999px; font-weight:600; font-size:15px;">${de ? "Website besuchen" : "Visit website"}</a>` : ""}
+        </div>`
+    }
+  </div>
+  <p style="color:rgba(255,255,255,.4); font-size:13px;">${de ? "Klicken Sie außerhalb um zu schließen" : "Click outside to close"}</p>
+</div>
 
 <!-- TRUST STRIP -->
 <section class="trust"><div class="trust-grid">
@@ -553,10 +791,10 @@ function buildMockWireframe(input: WireframeInput): string {
   </div>
   <div class="cards">
     ${[
-      [de ? "Kernleistung" : "Core service", de ? "Professionelle Beratung und Umsetzung für nachhaltige, sichtbare Ergebnisse." : "Expert advice and delivery focused on lasting, visible results.", '<path d="M12 2v20M2 12h20" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'],
-      [de ? "Maßgeschneidert" : "Tailored to you", de ? "Individuelle Lösungen, abgestimmt auf Ihre Wünsche und Ihr Budget." : "Individual solutions shaped around your goals and budget.", '<path d="M3 7h18M3 12h18M3 17h12" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'],
-      [de ? "Rundum-Service" : "End to end", de ? "Von der ersten Beratung bis zur Nachbetreuung — alles aus einer Hand." : "From first consultation to aftercare — all in one place.", '<path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>'],
-    ].map(([t, d, svg]) => `<div class="card"><span class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none">${svg}</svg></span><h3>${t}</h3><p>${d}</p><a href="#contact">${de ? "Mehr erfahren →" : "Learn more →"}</a></div>`).join("\n    ")}
+      ['<path d="M12 2v20M2 12h20" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'],
+      ['<path d="M3 7h18M3 12h18M3 17h12" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'],
+      ['<path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10Z" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/>'],
+    ].map((svg, i) => `<div class="card"><span class="card-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none">${svg[0]}</svg></span><h3>${svcs[i]?.[0] ?? ""}</h3><p>${svcs[i]?.[1] ?? ""}</p><a href="#contact">${de ? "Mehr erfahren →" : "Learn more →"}</a></div>`).join("\n    ")}
   </div>
 </section>
 
@@ -572,7 +810,7 @@ function buildMockWireframe(input: WireframeInput): string {
   <div class="phil-img">${img(input.philosophyImageUrl, de ? "Über uns" : "About us")}</div>
   <div>
     <span class="eyebrow">${de ? "Unsere Philosophie" : "Our philosophy"}</span>
-    <h2>${de ? "Damit Sie gern und mit gutem Gefühl wiederkommen." : "So you leave glad you came — and happy to return."}</h2>
+    <h2>${philH2}</h2>
     <p>${de ? `Bei ${input.businessName} steht der Mensch im Mittelpunkt. Wir nehmen uns Zeit, hören zu und erklären verständlich — damit Sie sich von Anfang an gut aufgehoben fühlen.` : `At ${input.businessName}, people come first. We take the time to listen and explain things clearly — so you feel looked after from the very first moment.`}</p>
     <p>${de ? "Hochwertige Arbeit, faire Preise und ein Team, das Ihre Sprache spricht. Das ist unser Anspruch — jeden Tag aufs Neue." : "Quality work, fair pricing and a team that speaks your language. That's our standard — every single day."}</p>
     <a href="#contact" class="btn btn-outline" style="margin-top:8px;">${de ? "Lernen Sie uns kennen →" : "Get to know us →"}</a>
@@ -653,7 +891,7 @@ function buildMockWireframe(input: WireframeInput): string {
     <div>
       ${phone ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.3 1l-2.2 2.3Z" fill="${p.primary}"/></svg></span><div><div class="l">${de ? "Telefon" : "Phone"}</div><div class="v"><a href="tel:${phone}">${phone}</a></div></div></div>` : ""}
       ${email ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="${p.primary}" stroke-width="1.8"/><path d="m3 7 9 6 9-6" stroke="${p.primary}" stroke-width="1.8"/></svg></span><div><div class="l">${de ? "E-Mail" : "Email"}</div><div class="v"><a href="mailto:${email}">${email}</a></div></div></div>` : ""}
-      ${addr ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z" stroke="${p.primary}" stroke-width="1.8"/><circle cx="12" cy="10" r="2.5" stroke="${p.primary}" stroke-width="1.8"/></svg></span><div><div class="l">${de ? "Adresse" : "Address"}</div><div class="v">${addr}</div></div></div>` : ""}
+      ${addrHtml ? `<div class="cdetail"><span class="cdetail-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z" stroke="${p.primary}" stroke-width="1.8"/><circle cx="12" cy="10" r="2.5" stroke="${p.primary}" stroke-width="1.8"/></svg></span><div><div class="l">${de ? "Adresse" : "Address"}</div><div class="v" style="line-height:1.55;">${addrHtml}</div></div></div>` : ""}
     </div>
     <div class="form">
       <h3>${de ? "Nachricht senden" : "Send a message"}</h3>
@@ -678,7 +916,7 @@ function buildMockWireframe(input: WireframeInput): string {
       <div class="foot-blurb">${de ? `Ihr ${label}-Fachbetrieb${input.city ? ` in ${input.city}` : ""}. Persönlich, zuverlässig und immer für Sie da.` : `Your local ${label.toLowerCase()}${input.city ? ` in ${input.city}` : ""}. Personal, reliable and always here for you.`}</div>
     </div>
     <div class="foot-col"><h4>${de ? "Navigation" : "Navigation"}</h4>${nav.map((n, i) => `<a href="${navHref[i]}">${n}</a>`).join("")}</div>
-    <div class="foot-col"><h4>${de ? "Kontakt" : "Contact"}</h4>${phone ? `<a href="tel:${phone}">${phone}</a>` : ""}${email ? `<a href="mailto:${email}">${email}</a>` : ""}${addr ? `<div>${addr}</div>` : input.city ? `<div>${input.city}</div>` : ""}</div>
+    <div class="foot-col"><h4>${de ? "Kontakt" : "Contact"}</h4>${phone ? `<a href="tel:${phone}">${phone}</a>` : ""}${email ? `<a href="mailto:${email}">${email}</a>` : ""}${addrHtml ? `<div style="line-height:1.5;">${addrHtml}</div>` : input.city ? `<div>${input.city}</div>` : ""}</div>
   </div>
   <div class="foot-bottom">© ${year} ${input.businessName}. ${de ? "Alle Rechte vorbehalten." : "All rights reserved."} · ${de ? "Website-Konzept von" : "Website concept by"} WLABS</div>
 </footer>
