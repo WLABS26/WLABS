@@ -101,11 +101,15 @@ let cached: AIProvider | undefined;
 export function getAIProvider(): AIProvider {
   if (cached) return cached;
   const provider = (process.env.AI_PROVIDER as AIProviderName) || "mock";
+  // Trim the keys: a stray space or newline pasted into a hosting dashboard is a
+  // common cause of "invalid x-api-key" 401s, and is otherwise invisible to debug.
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
 
-  if (provider === "openai" && process.env.OPENAI_API_KEY) {
-    cached = new OpenAIProvider(process.env.OPENAI_API_KEY);
-  } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-    cached = new AnthropicProvider(process.env.ANTHROPIC_API_KEY);
+  if (provider === "openai" && openaiKey) {
+    cached = new OpenAIProvider(openaiKey);
+  } else if (provider === "anthropic" && anthropicKey) {
+    cached = new AnthropicProvider(anthropicKey);
   } else {
     cached = new MockProvider();
   }
