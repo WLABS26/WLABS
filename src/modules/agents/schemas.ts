@@ -20,6 +20,7 @@ export const extractedWebsiteDataSchema = z.object({
   socialLinks: z.array(z.string()),
   addressHints: z.array(z.string()),
   imagesCount: z.number(),
+  imageUrls: z.array(z.string()).default([]),
   formsCount: z.number(),
   linksCount: z.number(),
   wordCount: z.number(),
@@ -30,6 +31,13 @@ export const extractedWebsiteDataSchema = z.object({
   hasPhone: z.boolean(),
   hasEmail: z.boolean(),
   hasMapEmbed: z.boolean(),
+  hasPlaceholderContent: z.boolean(),
+  contactPerson: z.string().nullable(),
+  imprintUrl: z.string().nullable(),
+  faviconUrl: z.string().nullable(),
+  themeColor: z.string().nullable(),
+  brandColors: z.array(z.string()),
+  fontFamily: z.string().nullable(),
 });
 
 export const categoryScoresSchema = z.object({
@@ -51,5 +59,11 @@ export const auditResultSchema = z.object({
   salesAngle: z.string(),
   urgencyReason: z.string(),
   redesignPotential: z.string(),
+  criticalFindings: z.array(z.string()),
+  bestPracticeComparison: z.string(),
+  benchmarkGap: z.string(),
   qualificationStatus: z.enum(["high_opportunity", "medium_opportunity", "low_opportunity", "reject"]),
+  // Optional visual audit results (set when a screenshot is available and vision AI is configured)
+  visualScore: z.number().min(0).max(10).nullable().optional(),
+  visualAuditJson: z.record(z.string(), z.unknown()).nullable().optional(),
 });

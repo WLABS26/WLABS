@@ -22,6 +22,10 @@ const recordSchema = z.object({
   city: z.string().optional(),
   country: z.string().optional(),
   notes: z.string().optional(),
+  source: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  discoverySourceId: z.string().optional(),
+  discoveryCategory: z.string().optional(),
 });
 
 const inputSchema = z.object({

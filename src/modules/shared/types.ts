@@ -22,6 +22,7 @@ export const LEAD_STATUSES = [
   "high_opportunity",
   "medium_opportunity",
   "low_opportunity",
+  "dedicated_sales",
   "preview_generated",
   "preview_qc_passed",
   "preview_needs_review",
@@ -37,6 +38,27 @@ export const LEAD_STATUSES = [
 ] as const;
 export type LeadStatus = (typeof LEAD_STATUSES)[number];
 
+/** Groups LeadStatus values into pipeline-funnel stages for the dashboard overview. */
+export interface FunnelStage {
+  key: string;
+  label: string;
+  statuses: readonly LeadStatus[];
+}
+
+export const FUNNEL_STAGES: readonly FunnelStage[] = [
+  { key: "discovery", label: "Discovery", statuses: ["imported"] },
+  { key: "qualification", label: "Qualification", statuses: ["qualified"] },
+  {
+    key: "audit",
+    label: "Audit",
+    statuses: ["crawled", "audited", "high_opportunity", "medium_opportunity", "low_opportunity", "dedicated_sales"],
+  },
+  { key: "preview", label: "Preview", statuses: ["preview_generated", "preview_qc_passed", "preview_needs_review"] },
+  { key: "email", label: "Email", statuses: ["email_drafted", "email_qc_passed", "approved"] },
+  { key: "outreach", label: "Outreach", statuses: ["contacted", "replied", "booked_call"] },
+  { key: "closed", label: "Closed", statuses: ["won", "lost"] },
+] as const;
+
 export const LEAD_QUALIFICATIONS = ["ready_for_crawl", "needs_manual_review", "rejected"] as const;
 export type LeadQualification = (typeof LEAD_QUALIFICATIONS)[number];
 
@@ -47,6 +69,11 @@ export const OPPORTUNITY_LEVELS = [
   "reject",
 ] as const;
 export type OpportunityLevel = (typeof OPPORTUNITY_LEVELS)[number];
+
+// ----- Payments -----
+
+export const PAYMENT_STATUSES = ["unpaid", "pending", "paid", "refunded"] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 // ----- Crawl / capture -----
 
@@ -80,6 +107,7 @@ export type EmailStatus = (typeof EMAIL_STATUSES)[number];
 export const EMAIL_VARIANTS = [
   "direct_preview",
   "audit_first",
+  "audit_comparison",
   "soft_consult",
   "follow_up_1",
   "follow_up_2",

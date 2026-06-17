@@ -7,6 +7,7 @@
  */
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/modules/crm/activity";
+import { buildIntakeUrl, getLatestPreviewForLead } from "@/modules/generator/preview-store";
 import { addSuppression } from "@/modules/lead-source/suppression";
 
 /** Approve a generated preview (human gate before it is shown as client-ready). */
@@ -48,7 +49,12 @@ export async function markContacted(leadId: string) {
 
 export async function markReplied(leadId: string) {
   await prisma.lead.update({ where: { id: leadId }, data: { status: "replied" } });
-  await logActivity(leadId, "reply_received", "Lead replied.", { status: "replied" });
+
+  const metadata: Record<string, unknown> = { status: "replied" };
+  const preview = await getLatestPreviewForLead(leadId);
+  if (preview) metadata.intakeUrl = buildIntakeUrl(preview.slug, preview.token);
+
+  await logActivity(leadId, "reply_received", "Lead replied.", metadata);
 }
 
 export async function markWon(leadId: string) {

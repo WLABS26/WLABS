@@ -29,6 +29,12 @@ export interface AuditResult {
   salesAngle: string;
   urgencyReason: string;
   redesignPotential: string;
+  /** Harsher, specific UX/conversion problems - template default, AI-enhanced when configured. */
+  criticalFindings: string[];
+  /** 1-2 sentence comparison to best-practice sites in the same industry. */
+  bestPracticeComparison: string;
+  /** Qualitative gap vs. market benchmarks. */
+  benchmarkGap: string;
   qualificationStatus: OpportunityLevel;
 }
 
@@ -58,8 +64,10 @@ export function runAudit(input: AuditInput): AuditResult {
   // ---- First Impression & Visual Trust (20) ----
   let firstImpression = 6;
   if (data.hasViewportMeta) firstImpression += 4;
-  if (data.imagesCount >= 3 && data.imagesCount <= 40) firstImpression += 3;
-  else if (data.imagesCount === 0) firstImpression -= 2;
+  // A "modern" site needs real visual richness, not just a handful of images.
+  if (data.imagesCount >= 6 && data.imagesCount <= 60) firstImpression += 3;
+  else if (data.imagesCount >= 3) firstImpression += 1;
+  else if (data.imagesCount === 0) firstImpression -= 3;
   if (data.hasFavicon) firstImpression += 2;
   if (data.title && data.metaDescription) firstImpression += 3;
   if (data.h1) firstImpression += 2;
@@ -86,6 +94,7 @@ export function runAudit(input: AuditInput): AuditResult {
   else if (data.textSnippets.length >= 1) contentClarity += 2;
   if (data.headings.length >= 3) contentClarity += 2;
   if (data.wordCount >= 150 && data.wordCount <= 3000) contentClarity += 1;
+  else if (data.wordCount < 80) contentClarity -= 1;
 
   // ---- Trust & Proof (10) ----
   let trustAndProof = 1;
@@ -94,6 +103,7 @@ export function runAudit(input: AuditInput): AuditResult {
   if (has(/about us|our team|founded|years of|established|meet the/)) trustAndProof += 2;
   if (data.socialLinks.length > 0) trustAndProof += 1;
   if (data.imagesCount >= 5) trustAndProof += 1;
+  if (data.hasPlaceholderContent) trustAndProof -= 2;
 
   // ---- Technical Basics (10) ----
   let technicalBasics = 0;
@@ -133,6 +143,7 @@ export function runAudit(input: AuditInput): AuditResult {
     quickWins,
     qualificationStatus,
     ...buildNarrative(input, overallScore, qualificationStatus),
+    ...buildCritique(data, categoryScores, overallScore, input.industryLabel),
   };
 }
 
@@ -172,6 +183,74 @@ function buildFindings(
   if (quickWins.length === 0) quickWins.push("Tighten the hero headline to lead with the core benefit.");
 
   return { topIssues, quickWins: quickWins.slice(0, 4) };
+}
+
+/** Harsher, more specific framing of each category gap - used for criticalFindings. */
+const CRITICAL_FINDING_TEXT: Record<AuditCategoryKey, string> = {
+  firstImpression:
+    "The homepage doesn't build credibility in the first few seconds - weak visuals, missing branding details, and a first impression that falls short of modern design standards.",
+  mobileExperience:
+    "The layout isn't clearly optimised for the majority of visitors who arrive on mobile - text, buttons, and forms likely need pinching or zooming to use.",
+  conversionReadiness:
+    "There's no obvious, low-friction next step for a visitor who's ready to act - calls-to-action are missing, buried, or unclear.",
+  contentClarity:
+    "A new visitor can't quickly tell what the business does, who it's for, or why to choose it - the messaging is generic or too thin.",
+  trustAndProof:
+    "There's little to reassure a stranger this is a real, reputable business - few or no reviews, credentials, team photos, or social proof.",
+  technicalBasics:
+    "Fundamental SEO and technical hygiene (HTTPS, titles, meta descriptions, headings) is incomplete, hurting search visibility and trust alike.",
+  localBusinessSignals:
+    "Local search signals (address, map, hours, service area) are weak or missing, making it harder for nearby customers to find and trust the business.",
+};
+
+function dedupe(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+/** Expanded, harsher critique - template default for criticalFindings/bestPracticeComparison/benchmarkGap. */
+function buildCritique(
+  data: ExtractedWebsiteData,
+  scores: CategoryScores,
+  overallScore: number,
+  industryLabel: string,
+): Pick<AuditResult, "criticalFindings" | "bestPracticeComparison" | "benchmarkGap"> {
+  const gaps = AUDIT_CATEGORIES.map((c) => ({
+    key: c.key,
+    gap: c.maxPoints - scores[c.key],
+    ratio: (c.maxPoints - scores[c.key]) / c.maxPoints,
+  }))
+    .filter((g) => g.ratio >= 0.25)
+    .sort((a, b) => b.gap - a.gap);
+
+  const findings = gaps.map((g) => CRITICAL_FINDING_TEXT[g.key]);
+  if (data.hasPlaceholderContent) {
+    findings.unshift("The site still contains unedited template or placeholder copy (or placeholder phone numbers) that was never replaced with real business content.");
+  }
+  if (findings.length === 0) {
+    findings.push("Overall the site is functional but unremarkable - nothing stands out as a reason to choose this business over a nearby competitor.");
+  }
+
+  const criticalFindings = dedupe(findings).slice(0, 5);
+  while (criticalFindings.length < 3) {
+    criticalFindings.push("Minor polish opportunities remain across copy, imagery, and calls-to-action.");
+  }
+
+  const label = industryLabel.toLowerCase();
+  const bestPracticeComparison =
+    overallScore >= 75
+      ? `Compared to the best ${label} websites, this site already covers most fundamentals - the remaining gap to best-in-class is mostly visual polish and content depth.`
+      : overallScore >= 60
+        ? `Best-practice ${label} websites combine a fast, mobile-first layout, clear service breakdowns, visible reviews, and one obvious call-to-action above the fold - this site is missing several of those.`
+        : `Best-practice ${label} websites lead with a clear value proposition, strong visual trust signals, and a frictionless way to contact or book - this site falls well short on most of these.`;
+
+  const benchmarkGap =
+    overallScore >= 75
+      ? "Minimal estimated gap to market benchmarks - most visitors likely get the information they need."
+      : overallScore >= 60
+        ? "A meaningful share of visitors likely leave without making contact due to unclear messaging or a weak call-to-action - a focused redesign would close much of this gap."
+        : "A large share of visitors likely bounce before finding what they need or how to get in touch - this represents an ongoing loss of enquiries compared to better-presented competitors.";
+
+  return { criticalFindings, bestPracticeComparison, benchmarkGap };
 }
 
 /** Opportunity thresholds per docs/scoring-rubric.md. */

@@ -2,16 +2,18 @@
  * Website Crawl Agent.
  *
  * Fetches a lead's homepage safely (SSRF-guarded, timeout + size capped) and
- * extracts the structured signals the audit engine needs. Screenshots require a
- * headless browser; when one is not configured the agent degrades gracefully
- * and reports `screenshotsAvailable: false` rather than failing.
+ * extracts the structured signals the audit engine needs. When fetch() is
+ * blocked or fails, falls back to Apify cloud browser crawl if APIFY_TOKEN is
+ * set. After any successful crawl, captures a screenshot via Apify.
  *
  * Transient failures (timeout / network) are thrown so the base agent retries;
- * permanent failures (blocked / invalid URL) are non-retryable.
+ * permanent failures (blocked / invalid URL) with no Apify fallback are
+ * non-retryable.
  */
 import { z } from "zod";
 
-import { extractWebsiteData } from "@/modules/crawler/extract";
+import { crawlWithApify, screenshotWithApify } from "@/modules/crawler/apify";
+import { extractWebsiteData, mergeImprintData } from "@/modules/crawler/extract";
 import { fetchHomepage } from "@/modules/crawler/fetch";
 import { Agent, NonRetryableError } from "./base-agent";
 import { extractedWebsiteDataSchema } from "./schemas";
@@ -27,6 +29,7 @@ const outputSchema = z.object({
   https: z.boolean(),
   errorMessage: z.string().nullable(),
   screenshotsAvailable: z.boolean(),
+  screenshotUrl: z.string().nullable(),
   extractedData: extractedWebsiteDataSchema.nullable(),
 });
 
@@ -45,28 +48,82 @@ export class WebsiteCrawlAgent extends Agent<WebsiteCrawlInput, WebsiteCrawlOutp
 
     if (result.ok) {
       ctx.log("info", `Fetched ${result.finalUrl} (${result.html.length} bytes)`);
+      let data = extractWebsiteData(result.html, result.finalUrl);
+
+      if (data.imprintUrl && data.imprintUrl !== result.finalUrl) {
+        try {
+          const imprint = await fetchHomepage(data.imprintUrl, { timeoutMs: input.timeoutMs });
+          if (imprint.ok) {
+            data = mergeImprintData(data, extractWebsiteData(imprint.html, imprint.finalUrl), imprint.finalUrl);
+            ctx.log("info", `Found Impressum at ${imprint.finalUrl}`);
+          }
+        } catch {
+          // Impressum fetch is best-effort.
+        }
+      }
+
+      const screenshotUrl = await screenshotWithApify(result.finalUrl);
+      if (screenshotUrl) ctx.log("info", "Screenshot captured via Apify");
+
       return {
         crawlStatus: "success",
         finalUrl: result.finalUrl,
         https: result.https,
         errorMessage: null,
-        screenshotsAvailable: false,
-        extractedData: extractWebsiteData(result.html, result.finalUrl),
+        screenshotsAvailable: screenshotUrl !== null,
+        screenshotUrl,
+        extractedData: data,
       };
     }
 
     const reason = result.reason ?? "failed";
     const message = result.error ?? "Crawl failed";
 
-    // Permanent failures: do not waste retries.
-    if (reason === "blocked" || reason === "invalid_url") {
+    if (reason === "invalid_url") {
       throw new NonRetryableError(message, { code: reason });
     }
 
-    // Transient failures: throw with the reason as the error name so the base
-    // agent retries and the pipeline can recover the CrawlStatus afterwards.
+    // For blocked/failed, try Apify before giving up.
+    if (reason === "blocked" || reason === "failed") {
+      ctx.log("warn", `fetch() ${reason}; trying Apify fallback`);
+      const apifyHtml = await crawlWithApify(input.websiteUrl);
+      if (apifyHtml) {
+        ctx.log("info", `Apify fallback succeeded (${apifyHtml.length} bytes)`);
+        let data = extractWebsiteData(apifyHtml, input.websiteUrl);
+
+        if (data.imprintUrl && data.imprintUrl !== input.websiteUrl) {
+          try {
+            const imprint = await fetchHomepage(data.imprintUrl, { timeoutMs: input.timeoutMs });
+            if (imprint.ok) {
+              data = mergeImprintData(data, extractWebsiteData(imprint.html, imprint.finalUrl), imprint.finalUrl);
+            }
+          } catch {
+            // best-effort
+          }
+        }
+
+        const screenshotUrl = await screenshotWithApify(input.websiteUrl);
+        if (screenshotUrl) ctx.log("info", "Screenshot captured via Apify (fallback path)");
+
+        return {
+          crawlStatus: "success",
+          finalUrl: input.websiteUrl,
+          https: input.websiteUrl.startsWith("https://"),
+          errorMessage: null,
+          screenshotsAvailable: screenshotUrl !== null,
+          screenshotUrl,
+          extractedData: data,
+        };
+      }
+      ctx.log("warn", "Apify fallback also failed or not configured");
+    }
+
+    if (reason === "blocked") {
+      throw new NonRetryableError(message, { code: reason });
+    }
+
     const error = new Error(message);
-    error.name = reason; // "timeout" | "failed"
+    error.name = reason;
     throw error;
   }
 }

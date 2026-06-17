@@ -16,6 +16,7 @@ const inputSchema = z.object({
   businessName: z.string(),
   hasPreviewLink: z.boolean(),
   isSuppressed: z.boolean(),
+  language: z.enum(["en", "de"]).default("en"),
 });
 
 const qcOutputSchema = z.object({
@@ -48,9 +49,15 @@ export class EmailQcAgent extends Agent<EmailQcInput, EmailQcOutput> {
       fixes.push("Do not send. Keep the lead suppressed.");
       critical = true;
     }
-    if (!body.includes("no thanks") && !body.includes("unsubscribe") && !body.includes("opt out")) {
+    const missingOptOut = input.language === "de"
+      ? !body.includes("nein danke")
+      : !body.includes("no thanks") && !body.includes("unsubscribe") && !body.includes("opt out");
+    if (missingOptOut) {
       issues.push("Missing opt-out line.");
-      fixes.push('Add: reply "no thanks" and I won’t contact you again.');
+      const optOutFix = input.language === "de"
+        ? "Hinzufuegen: Nein-danke-Zeile am Ende der E-Mail ergaenzen."
+        : "Add an opt-out line: reply no thanks and I will not contact you again.";
+      fixes.push(optOutFix);
       critical = true;
     }
     if (!input.hasPreviewLink || input.body.includes("[preview link]")) {

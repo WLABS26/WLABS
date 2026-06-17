@@ -16,6 +16,8 @@ export interface AICompleteOptions {
   /** Lower = more deterministic. */
   temperature?: number;
   maxTokens?: number;
+  /** Override the provider's default model for this call. */
+  model?: string;
 }
 
 export interface AIProvider {
@@ -48,7 +50,7 @@ class OpenAIProvider implements AIProvider {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
       body: JSON.stringify({
-        model: this.model,
+        model: options.model ?? this.model,
         temperature: options.temperature ?? 0.4,
         max_tokens: options.maxTokens ?? 1200,
         messages: [
@@ -65,30 +67,55 @@ class OpenAIProvider implements AIProvider {
 
 class AnthropicProvider implements AIProvider {
   readonly name = "anthropic" as const;
+  /** Models that have rejected `temperature` ("deprecated for this model") — don't resend it. */
+  private noTemperatureModels = new Set<string>();
   constructor(
     private apiKey: string,
-    private model = "claude-sonnet-4-6",
+    private model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
   ) {}
 
   async complete(options: AICompleteOptions): Promise<string> {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: options.maxTokens ?? 1200,
-        temperature: options.temperature ?? 0.4,
-        ...(options.system ? { system: options.system } : {}),
-        messages: [{ role: "user", content: options.prompt }],
-      }),
-    });
+    const baseUrl = process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, "") ?? "https://api.anthropic.com";
+    const model = options.model ?? this.model;
+
+    const post = (body: Record<string, unknown>) =>
+      fetch(`${baseUrl}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+      });
+
+    const base: Record<string, unknown> = {
+      model,
+      max_tokens: options.maxTokens ?? 1200,
+      ...(options.system ? { system: options.system } : {}),
+      messages: [{ role: "user", content: options.prompt }],
+    };
+
+    // Newer Anthropic models reject `temperature` ("deprecated for this model"). Send it when the
+    // model hasn't already rejected it, then transparently retry without it on that specific 400.
+    const withTemperature = !this.noTemperatureModels.has(model);
+    let res = await post(withTemperature ? { ...base, temperature: options.temperature ?? 0.4 } : base);
+
+    if (!res.ok && res.status === 400 && withTemperature) {
+      const errText = await res.text();
+      if (/temperature/i.test(errText)) {
+        this.noTemperatureModels.add(model);
+        res = await post(base);
+      } else {
+        throw new Error(`Anthropic error ${res.status}: ${errText}`);
+      }
+    }
+
     if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
-    const data = (await res.json()) as { content?: { text?: string }[] };
-    return data.content?.[0]?.text ?? "";
+    const data = (await res.json()) as { content?: Array<{ text?: string }> };
+    // Concatenate every text block. Extended-thinking models emit a thinking block first and put
+    // the actual answer in a later block, so reading only content[0] would drop the real output.
+    return (data.content ?? []).map((block) => block.text ?? "").join("");
   }
 }
 
@@ -98,11 +125,15 @@ let cached: AIProvider | undefined;
 export function getAIProvider(): AIProvider {
   if (cached) return cached;
   const provider = (process.env.AI_PROVIDER as AIProviderName) || "mock";
+  // Trim the keys: a stray space or newline pasted into a hosting dashboard is a
+  // common cause of "invalid x-api-key" 401s, and is otherwise invisible to debug.
+  const openaiKey = process.env.OPENAI_API_KEY?.trim();
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
 
-  if (provider === "openai" && process.env.OPENAI_API_KEY) {
-    cached = new OpenAIProvider(process.env.OPENAI_API_KEY);
-  } else if (provider === "anthropic" && process.env.ANTHROPIC_API_KEY) {
-    cached = new AnthropicProvider(process.env.ANTHROPIC_API_KEY);
+  if (provider === "openai" && openaiKey) {
+    cached = new OpenAIProvider(openaiKey);
+  } else if (provider === "anthropic" && anthropicKey) {
+    cached = new AnthropicProvider(anthropicKey);
   } else {
     cached = new MockProvider();
   }

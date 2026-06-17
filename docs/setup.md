@@ -42,15 +42,20 @@ Start Postgres (Docker example):
 docker compose up -d
 ```
 
-Push the schema and seed mock data:
+Create the tables and seed mock data:
 
 ```bash
-npm run db:push
+npm run db:migrate:deploy
 npm run db:seed
 ```
 
 The seed creates 16 leads across every industry and pipeline status, plus
 suppressions, inbound requests, audits, activity, and workflow runs.
+
+> `db:migrate:deploy` applies the committed migrations in
+> `prisma/migrations/` — this is also what production deployments use.
+> `npm run db:push` is a quicker alternative while prototyping schema
+> changes, but skips migration history.
 
 ## 4. Create an admin password
 

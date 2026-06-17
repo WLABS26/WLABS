@@ -2,22 +2,24 @@ import { AlertTriangle, Smartphone, PhoneMissed, MessageCircleQuestion, ShieldAl
 
 import { FadeIn } from "@/components/motion/fade-in";
 import { SectionHeading } from "@/components/sections/section-heading";
-import { PROBLEM_POINTS } from "@/modules/shared/constants";
 
 const ICONS = [AlertTriangle, Smartphone, PhoneMissed, MessageCircleQuestion, ShieldAlert, Gauge];
 
-export function Problem() {
+interface ProblemDict {
+  eyebrow: string;
+  title: string;
+  description: string;
+  points: string[];
+}
+
+export function Problem({ dict }: { dict: ProblemDict }) {
   return (
     <section className="section-padding">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="The Problem"
-          title="Your website might be costing you customers before they ever call."
-          description="Most small-business websites were built years ago and never updated. Visitors notice - and they leave."
-        />
+        <SectionHeading eyebrow={dict.eyebrow} title={dict.title} description={dict.description} />
 
         <div className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {PROBLEM_POINTS.map((point, i) => {
+          {dict.points.map((point, i) => {
             const Icon = ICONS[i % ICONS.length];
             return (
               <FadeIn key={point} delay={i * 0.06}>

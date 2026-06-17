@@ -5,38 +5,46 @@ import { Button } from "@/components/ui/button";
 import { FadeIn } from "@/components/motion/fade-in";
 import { BrowserMockup, MockupSkeleton } from "@/components/visuals/browser-mockup";
 import { ScoreGauge } from "@/components/visuals/score-gauge";
-import { PRIMARY_CTA, SECONDARY_CTA } from "@/modules/shared/constants";
 
-export function Hero() {
+interface HeroDict {
+  badge: string;
+  title1: string;
+  title2: string;
+  description: string;
+  primaryCta: string;
+  secondaryCta: string;
+  stat1: string;
+  stat2: string;
+  stat3: string;
+}
+
+export function Hero({ dict, contactHref, processHref }: { dict: HeroDict; contactHref?: string; processHref?: string }) {
   return (
     <section className="relative overflow-hidden pt-16 pb-20 sm:pt-24 sm:pb-28 lg:pt-32">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 px-6 lg:grid-cols-2 lg:gap-12 lg:px-8">
         <FadeIn>
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-brand-cyan">
             <Sparkles className="size-3.5" />
-            AI-Powered Website Factory
+            {dict.badge}
           </span>
 
           <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Modern websites.
+            {dict.title1}
             <br />
-            <span className="text-gradient">Engineered to perform.</span>
+            <span className="text-gradient">{dict.title2}</span>
           </h1>
 
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            WLABS analyzes outdated small-business websites, redesigns them into modern
-            high-converting MVP pages, and gets them launch-ready in 48 hours.
-          </p>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">{dict.description}</p>
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Button asChild size="lg">
-              <Link href={PRIMARY_CTA.href}>
-                {PRIMARY_CTA.label}
+              <Link href={contactHref ?? "/contact"}>
+                {dict.primaryCta}
                 <ArrowRight className="size-4" />
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href={SECONDARY_CTA.href}>{SECONDARY_CTA.label}</Link>
+              <Link href={processHref ?? "/process"}>{dict.secondaryCta}</Link>
             </Button>
           </div>
 
@@ -45,10 +53,10 @@ export function Hero() {
               <span className="flex size-8 items-center justify-center rounded-full bg-brand-blue/15 text-brand-cyan">
                 <TrendingUp className="size-4" />
               </span>
-              100-point standardized audit
+              {dict.stat1}
             </div>
-            <div>Fixed price · €999</div>
-            <div>48-hour turnaround</div>
+            <div>{dict.stat2}</div>
+            <div>{dict.stat3}</div>
           </div>
         </FadeIn>
 

@@ -1,7 +1,13 @@
 import type { VariantProps } from "class-variance-authority";
 
 import { Badge, badgeVariants } from "@/components/ui/badge";
-import type { AgentStepStatus, InboundRequestStatus, LeadStatus, WorkflowRunStatus } from "@/modules/shared/types";
+import type {
+  AgentStepStatus,
+  InboundRequestStatus,
+  LeadStatus,
+  PaymentStatus,
+  WorkflowRunStatus,
+} from "@/modules/shared/types";
 
 type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
 
@@ -22,6 +28,7 @@ const LEAD_STATUS_VARIANTS: Record<LeadStatus, BadgeVariant> = {
   high_opportunity: "success",
   medium_opportunity: "warning",
   low_opportunity: "outline",
+  dedicated_sales: "warning",
   preview_generated: "brand",
   preview_qc_passed: "success",
   preview_needs_review: "warning",
@@ -63,6 +70,13 @@ const INBOUND_REQUEST_STATUS_VARIANTS: Record<InboundRequestStatus, BadgeVariant
   closed: "default",
 };
 
+const PAYMENT_STATUS_VARIANTS: Record<PaymentStatus, BadgeVariant> = {
+  unpaid: "outline",
+  pending: "warning",
+  paid: "success",
+  refunded: "destructive",
+};
+
 export function LeadStatusBadge({ status, className }: { status: LeadStatus; className?: string }) {
   return (
     <Badge variant={LEAD_STATUS_VARIANTS[status]} className={className}>
@@ -90,6 +104,14 @@ export function AgentStepStatusBadge({ status, className }: { status: AgentStepS
 export function InboundRequestStatusBadge({ status, className }: { status: InboundRequestStatus; className?: string }) {
   return (
     <Badge variant={INBOUND_REQUEST_STATUS_VARIANTS[status]} className={className}>
+      {humanizeStatus(status)}
+    </Badge>
+  );
+}
+
+export function PaymentStatusBadge({ status, className }: { status: PaymentStatus; className?: string }) {
+  return (
+    <Badge variant={PAYMENT_STATUS_VARIANTS[status]} className={className}>
       {humanizeStatus(status)}
     </Badge>
   );

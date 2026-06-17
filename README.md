@@ -82,7 +82,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint`      | Run ESLint                                    |
 | `npm run db:generate` | Regenerate the Prisma client                |
 | `npm run db:push`   | Push `prisma/schema.prisma` to the database   |
-| `npm run db:migrate`| Create/apply a Prisma migration               |
+| `npm run db:migrate`| Create a new migration from schema changes (dev) |
+| `npm run db:migrate:deploy` | Apply committed migrations (production setup) |
 | `npm run db:studio` | Open Prisma Studio                            |
 | `npm run db:seed`   | Run `prisma/seed.ts` (mock dataset)           |
 | `npm run admin:hash`| Generate an `ADMIN_PASSWORD_HASH`             |

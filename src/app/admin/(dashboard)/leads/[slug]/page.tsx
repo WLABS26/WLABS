@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, Mail, MapPin, Phone, User, Workflow } from "lucide-react";
+import { ArrowLeft, Ban, BarChart3, Building2, Calendar, ExternalLink, Globe, LayoutTemplate, Mail, MapPin, Phone, RotateCcw, User, Workflow } from "lucide-react";
 
-import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge } from "@/components/admin/status-badge";
+import { AgentStepStatusBadge, InboundRequestStatusBadge, LeadStatusBadge, PaymentStatusBadge } from "@/components/admin/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
 import { getLeadBySlug } from "@/modules/crm/leads";
+import { buildIntakeUrl } from "@/modules/generator/preview-store";
 import { INDUSTRIES } from "@/modules/shared/constants";
 import { AUDIT_CATEGORIES } from "@/modules/shared/types";
 
@@ -16,13 +17,17 @@ import {
   approveEmailAction,
   approvePreviewAction,
   rejectEmailAction,
+  requeueLeadAction,
   runPreviewQcAction,
   suppressLeadAction,
 } from "../../actions";
+import { DeleteLeadButton } from "../delete-lead-button";
 import { AddNoteForm } from "./add-note-form";
 import { DraftEmailForm } from "./draft-email-form";
+import { EnrichLeadForm } from "./enrich-lead-form";
 import { GeneratePreviewForm } from "./generate-preview-form";
 import { LeadStatusForm } from "./lead-status-form";
+import { PaymentStatusForm } from "./payment-status-form";
 import { RunPipelineForm } from "./run-pipeline-form";
 
 const EMAIL_STATUS_VARIANTS: Record<string, "default" | "brand" | "success" | "warning" | "destructive"> = {
@@ -80,7 +85,10 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           <h1 className="text-2xl font-bold text-white">{lead.businessName}</h1>
           <p className="mt-1 text-sm text-muted">{INDUSTRY_LABELS.get(lead.industry) ?? lead.industry}</p>
         </div>
-        <LeadStatusBadge status={lead.status} />
+        <div className="flex items-center gap-2">
+          {lead.paymentStatus !== "unpaid" && <PaymentStatusBadge status={lead.paymentStatus} />}
+          <LeadStatusBadge status={lead.status} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -159,10 +167,55 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
 
           <Card>
             <CardHeader>
+              <CardTitle>Edit / enrich details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const latestCapture = lead.websiteCaptures[0];
+                const crawlBlocked = latestCapture && ["blocked", "failed", "timeout"].includes(latestCapture.crawlStatus);
+                return (
+                  <>
+                    {crawlBlocked && (
+                      <p className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                        Crawl was {latestCapture.crawlStatus} — fill in website content below to unblock preview generation.
+                      </p>
+                    )}
+                    <EnrichLeadForm
+                      leadId={lead.id}
+                      slug={lead.slug}
+                      defaults={{
+                        businessName: lead.businessName,
+                        industry: lead.industry,
+                        websiteUrl: lead.websiteUrl,
+                        city: lead.city,
+                        country: lead.country,
+                        contactEmail: lead.contactEmail,
+                        contactPhone: lead.contactPhone,
+                        contactPerson: lead.contactPerson,
+                      }}
+                    />
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Pipeline status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <LeadStatusForm leadId={lead.id} slug={lead.slug} status={lead.status} />
+              {lead.status === "rejected" && (
+                <form action={requeueLeadAction} className="border-t border-white/10 pt-3">
+                  <input type="hidden" name="leadId" value={lead.id} />
+                  <input type="hidden" name="slug" value={lead.slug} />
+                  <Button type="submit" size="sm" variant="ghost" className="w-full text-brand-cyan">
+                    <RotateCcw className="size-4" />
+                    Queue for re-review
+                  </Button>
+                </form>
+              )}
               {!lead.doNotContact && lead.status !== "suppressed" && (
                 <form action={suppressLeadAction} className="border-t border-white/10 pt-3">
                   <input type="hidden" name="leadId" value={lead.id} />
@@ -172,6 +225,30 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                     Suppress (do not contact)
                   </Button>
                 </form>
+              )}
+              <div className="border-t border-white/10 pt-3">
+                <DeleteLeadButton
+                  leadId={lead.id}
+                  businessName={lead.businessName}
+                  redirectTo="/admin/leads"
+                  className="w-full text-red-400 hover:text-red-300"
+                >
+                  Delete lead
+                </DeleteLeadButton>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <PaymentStatusForm leadId={lead.id} slug={lead.slug} paymentStatus={lead.paymentStatus} />
+              {lead.stripeCheckoutSessionId && (
+                <p className="border-t border-white/10 pt-3 text-xs text-muted">
+                  Checkout session: <span className="break-all text-white">{lead.stripeCheckoutSessionId}</span>
+                </p>
               )}
             </CardContent>
           </Card>
@@ -194,18 +271,33 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                 <div className="space-y-3">
                   {lead.previews.map((preview) => (
                     <div key={preview.id} className="space-y-2 rounded-lg border border-white/10 p-3">
-                      <a
-                        href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center justify-between gap-2 text-sm transition-colors hover:text-brand-cyan"
-                      >
-                        <span className="flex items-center gap-2 text-white">
-                          <ExternalLink className="size-3.5 text-muted" />
-                          /preview/{preview.slug}
-                        </span>
+                      <div className="flex items-center justify-between gap-2">
+                        {preview.wireframeHtml ? (
+                          <div className="flex flex-col gap-1">
+                            <a
+                              href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 text-sm font-medium text-white transition-colors hover:text-brand-cyan"
+                            >
+                              <LayoutTemplate className="size-4 text-brand-cyan" />
+                              View interactive wireframe
+                            </a>
+                            <Link
+                              href={`/admin/leads/${lead.slug}/wireframe`}
+                              className="text-xs text-brand-cyan hover:underline ml-6"
+                            >
+                              Open editor
+                            </Link>
+                          </div>
+                        ) : (
+                          <span className="flex items-center gap-2 text-sm text-muted">
+                            <LayoutTemplate className="size-4 animate-pulse" />
+                            Wireframe generating…
+                          </span>
+                        )}
                         <span className="text-xs text-muted">{preview.viewCount} views</span>
-                      </a>
+                      </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <Badge variant={preview.status === "approved" ? "success" : "default"}>{preview.status.replace(/_/g, " ")}</Badge>
                         {preview.qcStatus && <Badge variant="outline">QC: {preview.qcStatus.replace(/_/g, " ")}</Badge>}
@@ -231,6 +323,76 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
               <GeneratePreviewForm leadId={lead.id} slug={lead.slug} />
             </CardContent>
           </Card>
+
+          {(lead.previews.length > 0 || lead.intakeSubmissions.length > 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Intake form</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {lead.previews.length > 0 && (
+                  <a
+                    href={buildIntakeUrl(lead.previews[0].slug, lead.previews[0].token)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 text-sm text-brand-cyan hover:underline"
+                  >
+                    <ExternalLink className="size-3.5 shrink-0" />
+                    <span className="truncate">{buildIntakeUrl(lead.previews[0].slug, lead.previews[0].token)}</span>
+                  </a>
+                )}
+
+                {lead.intakeSubmissions.length > 0 ? (
+                  <div className="space-y-4 border-t border-white/10 pt-3">
+                    {lead.intakeSubmissions.map((submission) => {
+                      const brandColors = (submission.brandColorsJson as string[] | null) ?? [];
+                      return (
+                        <div key={submission.id} className="space-y-2 text-sm">
+                          <p className="text-xs text-muted">Submitted {formatRelativeTime(submission.createdAt)}</p>
+                          {submission.targetCustomer && (
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted">Target customer</p>
+                              <p className="text-white">{submission.targetCustomer}</p>
+                            </div>
+                          )}
+                          {brandColors.length > 0 && (
+                            <div>
+                              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Brand colors</p>
+                              <div className="flex flex-wrap gap-2">
+                                {brandColors.map((color) => (
+                                  <span
+                                    key={color}
+                                    className="flex items-center gap-1.5 rounded-full border border-white/10 px-2 py-0.5 text-xs text-white"
+                                  >
+                                    <span className="size-3 rounded-full border border-white/20" style={{ backgroundColor: color }} />
+                                    {color}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {submission.preferredDomain && (
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted">Preferred domain</p>
+                              <p className="text-white">{submission.preferredDomain}</p>
+                            </div>
+                          )}
+                          {submission.additionalNotes && (
+                            <div>
+                              <p className="text-xs font-medium uppercase tracking-wide text-muted">Additional notes</p>
+                              <p className="whitespace-pre-wrap text-white">{submission.additionalNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted">No intake details submitted yet.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {lead.inboundRequests.length > 0 && (
             <Card>
@@ -284,7 +446,16 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
               const categoryScores = (audit.categoryScoresJson ?? {}) as Record<string, number>;
               const topIssues = (audit.topIssuesJson ?? []) as string[];
               const quickWins = (audit.quickWinsJson ?? []) as string[];
+              const criticalFindings = (audit.criticalFindingsJson ?? []) as string[];
+              const visualAudit = audit.visualAuditJson as {
+                colorHarmony?: string;
+                typography?: string;
+                layoutBalance?: string;
+                ctaVisibility?: string;
+                firstImpressionFeedback?: string;
+              } | null;
               return (
+                <>
                 <Card>
                   <CardHeader>
                     <CardTitle>Website audit</CardTitle>
@@ -293,6 +464,11 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                     <div className="flex items-baseline gap-3">
                       <span className="text-4xl font-bold text-white">{audit.overallScore}</span>
                       <span className="text-sm text-muted">/ 100</span>
+                      {audit.visualScore !== null && audit.visualScore !== undefined && (
+                        <span className="rounded-full border border-brand-cyan/30 bg-brand-cyan/10 px-2.5 py-0.5 text-xs font-medium text-brand-cyan">
+                          Visual {audit.visualScore}/10
+                        </span>
+                      )}
                       <span className="ml-auto text-sm capitalize text-brand-cyan">
                         {audit.qualificationStatus.replace(/_/g, " ")}
                       </span>
@@ -348,6 +524,70 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                     )}
                   </CardContent>
                 </Card>
+
+                {(criticalFindings.length > 0 || audit.bestPracticeComparison || audit.benchmarkGap) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Critical findings</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {criticalFindings.length > 0 && (
+                        <ul className="list-disc space-y-1 pl-5 text-sm text-white">
+                          {criticalFindings.map((finding) => (
+                            <li key={finding}>{finding}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {audit.bestPracticeComparison && (
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Vs. best practice</p>
+                          <p className="text-sm text-white">{audit.bestPracticeComparison}</p>
+                        </div>
+                      )}
+                      {audit.benchmarkGap && (
+                        <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted">Benchmark gap</p>
+                          <p className="text-sm text-white">{audit.benchmarkGap}</p>
+                        </div>
+                      )}
+                      {visualAudit && (
+                        <div className="space-y-2 border-t border-white/10 pt-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted">Visual audit</p>
+                          {visualAudit.firstImpressionFeedback && (
+                            <p className="text-sm italic text-white">&ldquo;{visualAudit.firstImpressionFeedback}&rdquo;</p>
+                          )}
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {visualAudit.colorHarmony && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">Colors</p>
+                                <p className="text-xs text-white">{visualAudit.colorHarmony}</p>
+                              </div>
+                            )}
+                            {visualAudit.typography && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">Typography</p>
+                                <p className="text-xs text-white">{visualAudit.typography}</p>
+                              </div>
+                            )}
+                            {visualAudit.layoutBalance && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">Layout</p>
+                                <p className="text-xs text-white">{visualAudit.layoutBalance}</p>
+                              </div>
+                            )}
+                            {visualAudit.ctaVisibility && (
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-2.5">
+                                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted">CTA visibility</p>
+                                <p className="text-xs text-white">{visualAudit.ctaVisibility}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+                </>
               );
             })()}
 

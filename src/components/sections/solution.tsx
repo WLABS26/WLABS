@@ -2,7 +2,6 @@ import { Search, LayoutTemplate, Rocket, type LucideIcon } from "lucide-react";
 
 import { FadeIn } from "@/components/motion/fade-in";
 import { SectionHeading } from "@/components/sections/section-heading";
-import { SOLUTION_CARDS } from "@/modules/shared/constants";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   search: Search,
@@ -10,14 +9,26 @@ const ICON_MAP: Record<string, LucideIcon> = {
   rocket: Rocket,
 };
 
-export function Solution() {
+interface SolutionCard {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+interface SolutionDict {
+  eyebrow: string;
+  title: string;
+  cards: SolutionCard[];
+}
+
+export function Solution({ dict }: { dict: SolutionDict }) {
   return (
     <section className="section-padding">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <SectionHeading eyebrow="The WLABS Method" title="We analyze. We design. We elevate." />
+        <SectionHeading eyebrow={dict.eyebrow} title={dict.title} />
 
         <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3">
-          {SOLUTION_CARDS.map((card, i) => {
+          {dict.cards.map((card, i) => {
             const Icon = ICON_MAP[card.icon] ?? Rocket;
             return (
               <FadeIn key={card.title} delay={i * 0.1}>

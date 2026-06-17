@@ -3,24 +3,26 @@ import { SectionHeading } from "@/components/sections/section-heading";
 import { ScoreGauge } from "@/components/visuals/score-gauge";
 import { AUDIT_CATEGORIES, AUDIT_TOTAL_POINTS } from "@/modules/shared/types";
 
-/** Breakdown of the standardized 100-point website audit used in every project. */
-export function AuditFramework() {
+interface AuditDict {
+  eyebrow: string;
+  title: string;
+  description: string;
+  scoredOut: string;
+}
+
+export function AuditFramework({ dict }: { dict: AuditDict }) {
+  const scoredOutText = dict.scoredOut.replace("{total}", String(AUDIT_TOTAL_POINTS));
+
   return (
     <section className="section-padding">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <SectionHeading
-          eyebrow="The Audit"
-          title="A standardized 100-point website audit."
-          description="Every project starts with the same rigorous, repeatable audit, so you know exactly where your website stands today and what's holding it back."
-        />
+        <SectionHeading eyebrow={dict.eyebrow} title={dict.title} description={dict.description} />
 
         <div className="mt-16 grid grid-cols-1 gap-6 lg:grid-cols-[16rem_1fr]">
           <FadeIn className="flex justify-center lg:justify-start">
             <div className="glass-card flex h-fit flex-col items-center gap-4 rounded-2xl p-8 lg:sticky lg:top-28">
               <ScoreGauge score={AUDIT_TOTAL_POINTS} size={120} label="Total points" />
-              <p className="max-w-[12rem] text-center text-sm leading-relaxed text-muted">
-                Every website is scored out of {AUDIT_TOTAL_POINTS} across 7 categories.
-              </p>
+              <p className="max-w-[12rem] text-center text-sm leading-relaxed text-muted">{scoredOutText}</p>
             </div>
           </FadeIn>
 

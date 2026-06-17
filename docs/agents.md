@@ -43,6 +43,21 @@ validates the output, and returns a typed `AgentResult` (`completed` / `failed`
 | `preview_qc_agent` | Review preview for accuracy + brand-safety | `passed` / `needs_review` / `failed` |
 | `email_drafting_agent` | Personalized, compliant outreach (6 variants) | `EmailDraft` (always draft) |
 | `email_qc_agent` | Review email for compliance/tone | `passed` / `needs_review` / `failed` |
+| `places_discovery_agent` | One Google Places Text Search page for a city/category (Scope Market) | `places[]` + `nextPageToken` |
+| `place_details_agent` | Fallback lookup for a place missing website/phone from the search result | enriched website / phone / city / country |
+
+### AI-enhanced copy
+
+`redesign_brief_agent`, `preview_generator_agent`, and `email_drafting_agent`
+build a deterministic, template-based draft first - this is the full output in
+the default `AI_PROVIDER="mock"` mode. If a real provider is configured
+(`AI_PROVIDER="openai"` or `"anthropic"` + the matching API key, see
+`src/lib/ai/provider.ts`), the agent sends that draft to the model and asks it
+to rewrite the copy fields for the specific business, validates the JSON
+response (`src/lib/ai/generate.ts`), and merges it back in. Facts, contact
+details, links, compliance lines (opt-out, preview URL), and credibility/trust
+placeholders are never AI-authored - only the surrounding copy is. Any AI
+failure or invalid response silently falls back to the template draft.
 
 ## Pipelines
 
@@ -54,6 +69,18 @@ validates the output, and returns a typed `AgentResult` (`completed` / `failed`
   **Never sends.**
 - **`runBatch({ operation, batchSize })`** — runs one of the above across a
   controlled, rate-limited batch of eligible, non-suppressed leads.
+- **`runScopeMarketDiscovery(options)`** (`src/modules/discovery/scope-market.ts`,
+  `workflowType: "scope_market"`) — pages `places_discovery_agent` for each
+  chosen city/category, enriches results missing a website or phone via
+  `place_details_agent`, dedupes against previously-discovered places, and
+  imports the rest via `lead_import_agent`. Runs synchronously (seconds) and
+  returns an immediate summary plus a `DiscoveryRun` record.
+- **`runScopeMarketPipeline(discoveryRunId, leadIds)`** — runs
+  `runLeadPipeline` for each newly-discovered lead (intended to run in the
+  background via Next.js `after()`). Discovery-sourced leads that come back
+  `low_opportunity` (score > 75) are rerouted to the `dedicated_sales` status
+  instead of the regular redesign-prospects pool; everything else keeps
+  whatever status `runLeadPipeline` assigned.
 
 ## Inbound lead workflow
 

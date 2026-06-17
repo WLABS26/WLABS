@@ -1,17 +1,21 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { Lead, LeadStatus } from "@/generated/prisma/client";
+import type { Lead, LeadStatus, PaymentStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/utils";
 import { logActivity } from "@/modules/crm/activity";
+import { buildIntakeUrl, getLatestPreviewForLead } from "@/modules/generator/preview-store";
 
 const DEFAULT_PAGE_SIZE = 20;
 
 export interface ListLeadsFilters {
-  status?: LeadStatus;
+  status?: LeadStatus | LeadStatus[];
+  statusNotIn?: LeadStatus[];
+  paymentStatus?: PaymentStatus | PaymentStatus[];
   industry?: string;
   search?: string;
   page?: number;
   pageSize?: number;
+  orderBy?: Prisma.LeadOrderByWithRelationInput;
 }
 
 export interface ListLeadsResult {
@@ -32,8 +36,15 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<ListLea
 
   const where: Prisma.LeadWhereInput = {};
 
-  if (filters.status) {
-    where.status = filters.status;
+  if (filters.status || filters.statusNotIn) {
+    where.status = {
+      ...(filters.status ? (Array.isArray(filters.status) ? { in: filters.status } : { equals: filters.status }) : {}),
+      ...(filters.statusNotIn ? { notIn: filters.statusNotIn } : {}),
+    };
+  }
+
+  if (filters.paymentStatus) {
+    where.paymentStatus = Array.isArray(filters.paymentStatus) ? { in: filters.paymentStatus } : filters.paymentStatus;
   }
 
   if (filters.industry) {
@@ -54,7 +65,7 @@ export async function listLeads(filters: ListLeadsFilters = {}): Promise<ListLea
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: filters.orderBy ?? { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -81,6 +92,8 @@ export async function getLeadBySlug(slug: string) {
       emailDrafts: { orderBy: { createdAt: "desc" } },
       workflowSteps: { orderBy: { createdAt: "desc" }, include: { workflowRun: true } },
       inboundRequests: { orderBy: { createdAt: "desc" } },
+      intakeSubmissions: { orderBy: { createdAt: "desc" } },
+      websiteCaptures: { orderBy: { createdAt: "desc" } },
     },
   });
 }
@@ -90,13 +103,69 @@ export type LeadDetail = NonNullable<Awaited<ReturnType<typeof getLeadBySlug>>>;
 /** Update a lead's CRM pipeline status and record it on the activity timeline. */
 export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   const lead = await prisma.lead.update({ where: { id: leadId }, data: { status } });
-  await logActivity(leadId, "status_changed", `Status changed to "${status.replace(/_/g, " ")}".`, { status });
+
+  const metadata: Record<string, unknown> = { status };
+  if (status === "replied" || status === "booked_call") {
+    const preview = await getLatestPreviewForLead(leadId);
+    if (preview) metadata.intakeUrl = buildIntakeUrl(preview.slug, preview.token);
+  }
+
+  await logActivity(leadId, "status_changed", `Status changed to "${status.replace(/_/g, " ")}".`, metadata);
+  return lead;
+}
+
+/** Update a lead's payment status and record it on the activity timeline. */
+export async function updateLeadPaymentStatus(leadId: string, paymentStatus: PaymentStatus) {
+  const lead = await prisma.lead.update({ where: { id: leadId }, data: { paymentStatus } });
+  await logActivity(leadId, "payment_status_changed", `Payment status changed to "${paymentStatus.replace(/_/g, " ")}".`, {
+    paymentStatus,
+  });
+  return lead;
+}
+
+/** Requeue a rejected lead for re-review by moving it back to "qualified". */
+export async function requeueRejectedLead(leadId: string) {
+  const lead = await prisma.lead.update({ where: { id: leadId }, data: { status: "qualified" } });
+  await logActivity(leadId, "lead_unrejected", "Lead requeued for re-review after being rejected.", { status: "qualified" });
   return lead;
 }
 
 /** Append a free-text note to a lead's activity timeline. */
 export async function addLeadNote(leadId: string, note: string) {
   return logActivity(leadId, "note", note);
+}
+
+/** Permanently delete a lead. Related activities, audits, previews, etc. cascade via the schema's FK constraints. */
+export async function deleteLead(leadId: string): Promise<void> {
+  await prisma.lead.delete({ where: { id: leadId } });
+}
+
+export interface UpdateLeadDetailsInput {
+  businessName?: string | null;
+  industry?: string | null;
+  websiteUrl?: string | null;
+  city?: string | null;
+  country?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactPerson?: string | null;
+}
+
+/** Update free-form lead details and record it on the activity timeline. */
+export async function updateLeadDetails(leadId: string, fields: UpdateLeadDetailsInput) {
+  const data: Prisma.LeadUpdateInput = {};
+  if (fields.businessName !== undefined) data.businessName = fields.businessName?.trim() || undefined;
+  if (fields.industry !== undefined) data.industry = fields.industry?.trim() || undefined;
+  if (fields.websiteUrl !== undefined) data.websiteUrl = fields.websiteUrl?.trim() || null;
+  if (fields.city !== undefined) data.city = fields.city?.trim() || null;
+  if (fields.country !== undefined) data.country = fields.country?.trim() || null;
+  if (fields.contactEmail !== undefined) data.contactEmail = fields.contactEmail?.trim() || null;
+  if (fields.contactPhone !== undefined) data.contactPhone = fields.contactPhone?.trim() || null;
+  if (fields.contactPerson !== undefined) data.contactPerson = fields.contactPerson?.trim() || null;
+
+  const lead = await prisma.lead.update({ where: { id: leadId }, data });
+  await logActivity(leadId, "lead_enriched", "Lead details updated manually.", fields as Record<string, unknown>);
+  return lead;
 }
 
 export interface CreateLeadInput {

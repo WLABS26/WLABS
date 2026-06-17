@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 
 import { runLeadPipeline, runPreviewGeneration } from "@/modules/agents";
-import { addLeadNote, updateLeadStatus } from "@/modules/crm/leads";
-import { LEAD_STATUSES, type LeadStatus } from "@/modules/shared/types";
+import { addLeadNote, updateLeadDetails, updateLeadPaymentStatus, updateLeadStatus } from "@/modules/crm/leads";
+import { saveManualCapture } from "@/modules/crm/manual-capture";
+import { INDUSTRIES } from "@/modules/shared/constants";
+import { LEAD_STATUSES, PAYMENT_STATUSES, type LeadStatus, type PaymentStatus } from "@/modules/shared/types";
 
 export interface UpdateStatusState {
   error?: string;
@@ -31,6 +33,37 @@ export async function updateLeadStatusAction(
 
   revalidatePath(`/admin/leads/${slug}`);
   revalidatePath("/admin/leads");
+  revalidatePath("/admin");
+
+  return { success: true };
+}
+
+export interface UpdatePaymentStatusState {
+  error?: string;
+  success?: boolean;
+}
+
+export async function updatePaymentStatusAction(
+  _prevState: UpdatePaymentStatusState | undefined,
+  formData: FormData,
+): Promise<UpdatePaymentStatusState> {
+  const leadId = String(formData.get("leadId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+  const paymentStatus = String(formData.get("paymentStatus") ?? "");
+
+  if (!leadId || !slug) {
+    return { error: "Missing lead reference." };
+  }
+
+  if (!(PAYMENT_STATUSES as readonly string[]).includes(paymentStatus)) {
+    return { error: "Invalid payment status." };
+  }
+
+  await updateLeadPaymentStatus(leadId, paymentStatus as PaymentStatus);
+
+  revalidatePath(`/admin/leads/${slug}`);
+  revalidatePath("/admin/leads");
+  revalidatePath("/admin/payments");
   revalidatePath("/admin");
 
   return { success: true };
@@ -106,6 +139,64 @@ export async function runPipelineAction(
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Pipeline failed to start." };
   }
+}
+
+export interface EnrichLeadState {
+  error?: string;
+  success?: boolean;
+}
+
+const industrySet = new Set<string>(INDUSTRIES.map((i) => i.value));
+
+export async function enrichLeadAction(
+  _prevState: EnrichLeadState | undefined,
+  formData: FormData,
+): Promise<EnrichLeadState> {
+  const leadId = String(formData.get("leadId") ?? "");
+  const slug = String(formData.get("slug") ?? "");
+
+  if (!leadId || !slug) return { error: "Missing lead reference." };
+
+  const industry = String(formData.get("industry") ?? "").trim();
+  const contactFields = {
+    businessName: String(formData.get("businessName") ?? "").trim() || null,
+    industry: industrySet.has(industry) ? industry : null,
+    websiteUrl: String(formData.get("websiteUrl") ?? "").trim() || null,
+    city: String(formData.get("city") ?? "").trim() || null,
+    country: String(formData.get("country") ?? "").trim() || null,
+    contactEmail: String(formData.get("contactEmail") ?? "").trim() || null,
+    contactPhone: String(formData.get("contactPhone") ?? "").trim() || null,
+    contactPerson: String(formData.get("contactPerson") ?? "").trim() || null,
+  };
+
+  await updateLeadDetails(leadId, contactFields);
+
+  const contentH1 = String(formData.get("contentH1") ?? "").trim();
+  const contentMetaDescription = String(formData.get("contentMetaDescription") ?? "").trim();
+  const contentAboutText = String(formData.get("contentAboutText") ?? "").trim();
+  const contentAddressHint = String(formData.get("contentAddressHint") ?? "").trim();
+  const contentBrandColors = String(formData.get("contentBrandColors") ?? "").trim();
+  const contentFontFamily = String(formData.get("contentFontFamily") ?? "").trim();
+  const contentImageUrls = String(formData.get("contentImageUrls") ?? "").trim();
+
+  const hasWebsiteContent = contentH1 || contentMetaDescription || contentAboutText || contentAddressHint || contentBrandColors;
+
+  if (hasWebsiteContent) {
+    await saveManualCapture(leadId, {
+      h1: contentH1 || null,
+      metaDescription: contentMetaDescription || null,
+      aboutText: contentAboutText || null,
+      addressHint: contentAddressHint || null,
+      brandColors: contentBrandColors || null,
+      fontFamily: contentFontFamily || null,
+      imageUrls: contentImageUrls || null,
+    });
+  }
+
+  revalidatePath(`/admin/leads/${slug}`);
+  revalidatePath("/admin/leads");
+
+  return { success: true };
 }
 
 export interface GeneratePreviewState {

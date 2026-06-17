@@ -3,20 +3,23 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Eye, Inbox, LayoutDashboard, LogOut, Mail, Menu, Users, Workflow } from "lucide-react";
+import { BarChart3, Compass, CreditCard, Eye, Inbox, LayoutDashboard, LogOut, Mail, Menu, Share2, Users, Workflow } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { BRAND } from "@/modules/shared/constants";
+import { Logo } from "@/components/layout/logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { logoutAction } from "@/app/admin/login/actions";
 
 const ADMIN_NAV_LINKS = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Discovery", href: "/admin/discovery", icon: Compass },
   { label: "Leads", href: "/admin/leads", icon: Users },
   { label: "Previews", href: "/admin/previews", icon: Eye },
   { label: "Emails", href: "/admin/emails", icon: Mail },
+  { label: "Social", href: "/admin/social", icon: Share2 },
   { label: "Review queue", href: "/admin/review", icon: Inbox },
+  { label: "Payments", href: "/admin/payments", icon: CreditCard },
   { label: "Workflows", href: "/admin/workflows", icon: Workflow },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
 ] as const;
@@ -72,15 +75,6 @@ function NavLinks({ pathname, asSheetClose }: { pathname: string; asSheetClose?:
   );
 }
 
-function SidebarBrand() {
-  return (
-    <div className="flex flex-col leading-none">
-      <span className="text-lg font-bold tracking-tight text-white">{BRAND.name} Admin</span>
-      <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted">{BRAND.fullName}</span>
-    </div>
-  );
-}
-
 function SidebarFooter({ adminEmail }: { adminEmail: string }) {
   return (
     <div className="mt-6 space-y-3 border-t border-white/10 pt-4">
@@ -102,7 +96,7 @@ export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
     <>
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-white/10 bg-white/[0.02] p-5 lg:flex">
-        <SidebarBrand />
+        <Logo href="/admin" className="h-8 w-auto" />
         <div className="mt-6 flex-1">
           <NavLinks pathname={pathname} />
         </div>
@@ -111,7 +105,7 @@ export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
 
       {/* Mobile top bar */}
       <div className="flex items-center justify-between border-b border-white/10 bg-brand-navy/80 px-4 py-3 backdrop-blur-xl lg:hidden">
-        <SidebarBrand />
+        <Logo href="/admin" className="h-8 w-auto" />
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -119,7 +113,7 @@ export function AdminSidebar({ adminEmail }: { adminEmail: string }) {
             </Button>
           </SheetTrigger>
           <SheetContent className="flex flex-col">
-            <SidebarBrand />
+            <Logo href="/admin" className="h-8 w-auto" />
             <div className="mt-6 flex-1">
               <NavLinks pathname={pathname} asSheetClose />
             </div>

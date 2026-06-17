@@ -42,3 +42,20 @@ export const contactRequestSchema = z.object({
 });
 
 export type ContactRequestInput = z.infer<typeof contactRequestSchema>;
+
+/**
+ * Dynamic intake form submitted by an interested lead via their preview link.
+ * Lets them describe their ideal customer, brand colors, and a preferred
+ * domain so a regenerated preview can reflect their real brand and audience.
+ */
+export const intakeSubmissionSchema = z.object({
+  targetCustomer: z.string().trim().max(2000).optional().or(z.literal("")),
+  brandColors: z
+    .array(z.string().trim().regex(/^#[0-9a-fA-F]{3,8}$/, "Use a hex color like #1a73e8"))
+    .max(5)
+    .optional(),
+  preferredDomain: z.string().trim().max(255).optional().or(z.literal("")),
+  additionalNotes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type IntakeSubmissionInput = z.infer<typeof intakeSubmissionSchema>;

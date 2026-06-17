@@ -342,4 +342,20 @@ export function industryLabel(industry: string): string {
   return INDUSTRY_LABELS.get(industry) ?? "Local Business";
 }
 
+/**
+ * Resolve the gradient theme for a preview, preferring brand colors extracted
+ * from the lead's own site over the industry template's default. With two or
+ * more extracted colors, use the first two as the gradient; with exactly one,
+ * pair it with the template's "to" color; with none, use the template as-is.
+ */
+export function resolveTheme(brandColors: string[], template: IndustryTemplate): { from: string; to: string } {
+  if (brandColors.length >= 2) {
+    return { from: brandColors[0], to: brandColors[1] };
+  }
+  if (brandColors.length === 1) {
+    return { from: brandColors[0], to: template.theme.to };
+  }
+  return template.theme;
+}
+
 export { TEMPLATES as INDUSTRY_TEMPLATES };
