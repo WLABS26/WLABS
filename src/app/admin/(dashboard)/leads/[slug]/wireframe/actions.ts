@@ -48,6 +48,12 @@ export async function refineWireframeAction(
   const input = buildWireframeInput(preview.lead, capture, audit);
   const { html, reply } = await refineWireframe({ currentHtml: preview.wireframeHtml, instruction, input });
 
+  // Failure or mock mode: surface the reason inline (red) and leave the wireframe + chat history
+  // untouched, so transient API errors don't clutter the saved conversation and the operator can retry.
+  if (!html) {
+    return { error: reply };
+  }
+
   const existingChat = (preview.wireframeChatJson as WireframeChatMessage[] | null) ?? [];
   const userMsg: WireframeChatMessage = { role: "user", content: instruction, at: new Date().toISOString() };
   const assistantMsg: WireframeChatMessage = { role: "assistant", content: reply, at: new Date().toISOString() };
@@ -55,15 +61,10 @@ export async function refineWireframeAction(
 
   await prisma.preview.update({
     where: { id: previewId },
-    data: {
-      ...(html ? { wireframeHtml: html } : {}),
-      wireframeChatJson: newChat as object[],
-    },
+    data: { wireframeHtml: html, wireframeChatJson: newChat as object[] },
   });
 
-  if (html) {
-    await logActivity(preview.leadId, "wireframe_refined", instruction);
-  }
+  await logActivity(preview.leadId, "wireframe_refined", instruction);
 
   revalidatePath(`/admin/leads/${leadSlug}/wireframe`);
   revalidatePath(`/admin/leads/${leadSlug}`);

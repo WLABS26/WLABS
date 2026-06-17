@@ -41,8 +41,10 @@ export default async function WireframeEditorPage({ params }: WireframeEditorPag
   const aiEnabled = !isMockProvider();
 
   return (
-    // Full-bleed: cancel the dashboard container's padding so the editor uses the whole main area.
-    <div className="-mx-4 -my-6 flex h-[100dvh] flex-col overflow-hidden sm:-mx-6 lg:-mx-8 lg:-my-10">
+    // Fixed full-bleed: the dashboard layout boxes every page in `mx-auto max-w-7xl`, which caps and
+    // centres the editor. Taking it out of flow (fixed, offset past the 256px `lg:w-64` sidebar) lets
+    // the wireframe iframe fill the entire remaining viewport — full height and full width.
+    <div className="fixed inset-0 z-30 flex flex-col bg-brand-navy lg:left-64">
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/10 shrink-0">
         <Link href={`/admin/leads/${slug}`} className="flex items-center gap-1.5 text-sm text-muted hover:text-white">
           <ArrowLeft className="size-4" />

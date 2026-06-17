@@ -12,6 +12,7 @@
 import { z } from "zod";
 
 import { generateText } from "@/lib/ai/generate";
+import { getAIProvider, isMockProvider } from "@/lib/ai/provider";
 import { Agent } from "./base-agent";
 
 const inputSchema = z.object({
@@ -954,16 +955,37 @@ export async function refineWireframe(params: {
   instruction: string;
   input: WireframeInput;
 }): Promise<{ html: string | null; reply: string }> {
+  // Mock mode is the only case where AI is genuinely unconfigured — say so plainly.
+  if (isMockProvider()) {
+    return {
+      html: null,
+      reply: "AI editing is disabled in mock mode. Set AI_PROVIDER=anthropic and ANTHROPIC_API_KEY to enable live wireframe edits.",
+    };
+  }
+
   const prompt = `CHANGE REQUEST:\n${params.instruction}\n\n---\nCURRENT WIREFRAME HTML:\n${params.currentHtml}`;
-  const result = await generateText({
-    system: WIREFRAME_REFINE_SYSTEM_PROMPT,
-    prompt,
-    model: WIREFRAME_MODEL,
-    maxTokens: 16000,
-    temperature: 0.2,
-  });
-  if (!result || !result.includes("</html>")) {
-    return { html: null, reply: "AI refinement needs a configured AI provider (ANTHROPIC_API_KEY)." };
+  let result: string;
+  try {
+    // Call the provider directly (not generateText) so a real API failure — bad key, an
+    // unavailable model id, a max_tokens cap — surfaces its reason instead of being swallowed
+    // into a misleading "needs a provider" message.
+    result = await getAIProvider().complete({
+      system: WIREFRAME_REFINE_SYSTEM_PROMPT,
+      prompt,
+      model: WIREFRAME_MODEL,
+      maxTokens: 16000,
+      temperature: 0.2,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { html: null, reply: `AI request failed — ${message}` };
+  }
+
+  if (!result.includes("</html>")) {
+    return {
+      html: null,
+      reply: "The model didn't return a complete HTML document (it may have hit the output length limit). Try a smaller, more specific change.",
+    };
   }
   return { html: result, reply: "Applied." };
 }
