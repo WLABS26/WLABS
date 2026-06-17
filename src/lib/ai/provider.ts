@@ -112,8 +112,10 @@ class AnthropicProvider implements AIProvider {
     }
 
     if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
-    const data = (await res.json()) as { content?: { text?: string }[] };
-    return data.content?.[0]?.text ?? "";
+    const data = (await res.json()) as { content?: Array<{ text?: string }> };
+    // Concatenate every text block. Extended-thinking models emit a thinking block first and put
+    // the actual answer in a later block, so reading only content[0] would drop the real output.
+    return (data.content ?? []).map((block) => block.text ?? "").join("");
   }
 }
 

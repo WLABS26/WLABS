@@ -942,6 +942,10 @@ function buildMockWireframe(input: WireframeInput): string {
 /** Top-tier model for wireframe generation/refinement. Overridable via env so a real key works without code edits. */
 const WIREFRAME_MODEL = process.env.WIREFRAME_MODEL || "claude-opus-4-8";
 
+/** Output budget for full-document wireframe generation/edits. A whole inline HTML page is large, and
+ * extended-thinking models also spend tokens here, so this is generous. Lower via env if a model caps output. */
+const WIREFRAME_MAX_TOKENS = Number(process.env.WIREFRAME_MAX_TOKENS) || 32000;
+
 const WIREFRAME_REFINE_SYSTEM_PROMPT = `You are editing an existing self-contained HTML wireframe for a business prospect. Apply ONLY the requested change — preserve every other section, style, and script exactly as-is. Absolute rules still apply:
 - Never add fabricated reviews, star ratings, award badges, or statistics.
 - Keep all inline CSS and JS; no external script/style src attributes.
@@ -973,7 +977,7 @@ export async function refineWireframe(params: {
       system: WIREFRAME_REFINE_SYSTEM_PROMPT,
       prompt,
       model: WIREFRAME_MODEL,
-      maxTokens: 16000,
+      maxTokens: WIREFRAME_MAX_TOKENS,
       temperature: 0.2,
     });
   } catch (err) {
@@ -1001,7 +1005,7 @@ export class WireframeGenerationAgent extends Agent<WireframeInput, WireframeOut
       system: WIREFRAME_SYSTEM_PROMPT,
       prompt: buildWireframePrompt(input),
       temperature: 0.3,
-      maxTokens: 16000,
+      maxTokens: WIREFRAME_MAX_TOKENS,
       model: WIREFRAME_MODEL,
     });
 
