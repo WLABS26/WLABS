@@ -36,6 +36,11 @@ account, so there's no new password to remember for them.
 3. On the project dashboard, copy the **connection string**. It looks like
    `postgresql://user:password@host/dbname?sslmode=require`. You'll paste
    this into Vercel in Step 3.
+4. You also need the **direct** (non-pooled) version of that string for
+   database migrations. It's identical, just with `-pooler` removed from the
+   address — e.g. `...@ep-spring-paper-asu3i2yd-pooler.c-4...` becomes
+   `...@ep-spring-paper-asu3i2yd.c-4...`. (In Neon you can also toggle off
+   **Connection pooling** on the dashboard to see this version.) Keep both.
 
 ### Step 2 — Generate your admin login
 
@@ -60,7 +65,8 @@ tab open — you'll copy three values from it in the next step.
 
    | Name | Value |
    |---|---|
-   | `DATABASE_URL` | the connection string from Neon (Step 1) |
+   | `DATABASE_URL` | the **pooled** connection string from Neon (Step 1) |
+   | `DIRECT_URL` | the **direct** connection string from Neon (Step 1) — the same as `DATABASE_URL` with `-pooler` removed. Used only to apply migrations during the build; without it the build fails with a `P1002` lock-timeout error. |
    | `ADMIN_EMAIL` | the email from the credentials tool (Step 2) |
    | `ADMIN_PASSWORD_HASH` | the `ADMIN_PASSWORD_HASH` value from the credentials tool |
    | `SESSION_SECRET` | the `SESSION_SECRET` value from the credentials tool |
