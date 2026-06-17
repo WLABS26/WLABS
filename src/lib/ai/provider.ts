@@ -67,6 +67,8 @@ class OpenAIProvider implements AIProvider {
 
 class AnthropicProvider implements AIProvider {
   readonly name = "anthropic" as const;
+  /** Models that have rejected `temperature` ("deprecated for this model") — don't resend it. */
+  private noTemperatureModels = new Set<string>();
   constructor(
     private apiKey: string,
     private model = process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
@@ -74,21 +76,41 @@ class AnthropicProvider implements AIProvider {
 
   async complete(options: AICompleteOptions): Promise<string> {
     const baseUrl = process.env.ANTHROPIC_BASE_URL?.replace(/\/$/, "") ?? "https://api.anthropic.com";
-    const res = await fetch(`${baseUrl}/v1/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: options.model ?? this.model,
-        max_tokens: options.maxTokens ?? 1200,
-        temperature: options.temperature ?? 0.4,
-        ...(options.system ? { system: options.system } : {}),
-        messages: [{ role: "user", content: options.prompt }],
-      }),
-    });
+    const model = options.model ?? this.model;
+
+    const post = (body: Record<string, unknown>) =>
+      fetch(`${baseUrl}/v1/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": this.apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+      });
+
+    const base: Record<string, unknown> = {
+      model,
+      max_tokens: options.maxTokens ?? 1200,
+      ...(options.system ? { system: options.system } : {}),
+      messages: [{ role: "user", content: options.prompt }],
+    };
+
+    // Newer Anthropic models reject `temperature` ("deprecated for this model"). Send it when the
+    // model hasn't already rejected it, then transparently retry without it on that specific 400.
+    const withTemperature = !this.noTemperatureModels.has(model);
+    let res = await post(withTemperature ? { ...base, temperature: options.temperature ?? 0.4 } : base);
+
+    if (!res.ok && res.status === 400 && withTemperature) {
+      const errText = await res.text();
+      if (/temperature/i.test(errText)) {
+        this.noTemperatureModels.add(model);
+        res = await post(base);
+      } else {
+        throw new Error(`Anthropic error ${res.status}: ${errText}`);
+      }
+    }
+
     if (!res.ok) throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
     const data = (await res.json()) as { content?: { text?: string }[] };
     return data.content?.[0]?.text ?? "";
