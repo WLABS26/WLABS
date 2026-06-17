@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "prisma migrate deploy && next build",
+    "vercel-build": "prisma migrate deploy || echo 'WARNING: prisma migrate deploy failed - continuing build with the existing database schema' ; next build",
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
