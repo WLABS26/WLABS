@@ -24,6 +24,7 @@ import {
 import { DeleteLeadButton } from "../delete-lead-button";
 import { AddNoteForm } from "./add-note-form";
 import { DraftEmailForm } from "./draft-email-form";
+import { EnrichLeadForm } from "./enrich-lead-form";
 import { GeneratePreviewForm } from "./generate-preview-form";
 import { LeadStatusForm } from "./lead-status-form";
 import { PaymentStatusForm } from "./payment-status-form";
@@ -166,6 +167,41 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
 
           <Card>
             <CardHeader>
+              <CardTitle>Edit / enrich details</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const latestCapture = lead.websiteCaptures[0];
+                const crawlBlocked = latestCapture && ["blocked", "failed", "timeout"].includes(latestCapture.crawlStatus);
+                return (
+                  <>
+                    {crawlBlocked && (
+                      <p className="mb-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                        Crawl was {latestCapture.crawlStatus} — fill in website content below to unblock preview generation.
+                      </p>
+                    )}
+                    <EnrichLeadForm
+                      leadId={lead.id}
+                      slug={lead.slug}
+                      defaults={{
+                        businessName: lead.businessName,
+                        industry: lead.industry,
+                        websiteUrl: lead.websiteUrl,
+                        city: lead.city,
+                        country: lead.country,
+                        contactEmail: lead.contactEmail,
+                        contactPhone: lead.contactPhone,
+                        contactPerson: lead.contactPerson,
+                      }}
+                    />
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Pipeline status</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -237,15 +273,23 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
                     <div key={preview.id} className="space-y-2 rounded-lg border border-white/10 p-3">
                       <div className="flex items-center justify-between gap-2">
                         {preview.wireframeHtml ? (
-                          <a
-                            href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-2 text-sm font-medium text-white transition-colors hover:text-brand-cyan"
-                          >
-                            <LayoutTemplate className="size-4 text-brand-cyan" />
-                            View interactive wireframe
-                          </a>
+                          <div className="flex flex-col gap-1">
+                            <a
+                              href={`/preview/${preview.slug}${preview.token ? `?token=${preview.token}` : ""}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 text-sm font-medium text-white transition-colors hover:text-brand-cyan"
+                            >
+                              <LayoutTemplate className="size-4 text-brand-cyan" />
+                              View interactive wireframe
+                            </a>
+                            <Link
+                              href={`/admin/leads/${lead.slug}/wireframe`}
+                              className="text-xs text-brand-cyan hover:underline ml-6"
+                            >
+                              Open editor
+                            </Link>
+                          </div>
                         ) : (
                           <span className="flex items-center gap-2 text-sm text-muted">
                             <LayoutTemplate className="size-4 animate-pulse" />

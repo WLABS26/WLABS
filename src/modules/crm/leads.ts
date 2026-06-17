@@ -93,6 +93,7 @@ export async function getLeadBySlug(slug: string) {
       workflowSteps: { orderBy: { createdAt: "desc" }, include: { workflowRun: true } },
       inboundRequests: { orderBy: { createdAt: "desc" } },
       intakeSubmissions: { orderBy: { createdAt: "desc" } },
+      websiteCaptures: { orderBy: { createdAt: "desc" } },
     },
   });
 }
@@ -137,6 +138,34 @@ export async function addLeadNote(leadId: string, note: string) {
 /** Permanently delete a lead. Related activities, audits, previews, etc. cascade via the schema's FK constraints. */
 export async function deleteLead(leadId: string): Promise<void> {
   await prisma.lead.delete({ where: { id: leadId } });
+}
+
+export interface UpdateLeadDetailsInput {
+  businessName?: string | null;
+  industry?: string | null;
+  websiteUrl?: string | null;
+  city?: string | null;
+  country?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactPerson?: string | null;
+}
+
+/** Update free-form lead details and record it on the activity timeline. */
+export async function updateLeadDetails(leadId: string, fields: UpdateLeadDetailsInput) {
+  const data: Prisma.LeadUpdateInput = {};
+  if (fields.businessName !== undefined) data.businessName = fields.businessName?.trim() || undefined;
+  if (fields.industry !== undefined) data.industry = fields.industry?.trim() || undefined;
+  if (fields.websiteUrl !== undefined) data.websiteUrl = fields.websiteUrl?.trim() || null;
+  if (fields.city !== undefined) data.city = fields.city?.trim() || null;
+  if (fields.country !== undefined) data.country = fields.country?.trim() || null;
+  if (fields.contactEmail !== undefined) data.contactEmail = fields.contactEmail?.trim() || null;
+  if (fields.contactPhone !== undefined) data.contactPhone = fields.contactPhone?.trim() || null;
+  if (fields.contactPerson !== undefined) data.contactPerson = fields.contactPerson?.trim() || null;
+
+  const lead = await prisma.lead.update({ where: { id: leadId }, data });
+  await logActivity(leadId, "lead_enriched", "Lead details updated manually.", fields as Record<string, unknown>);
+  return lead;
 }
 
 export interface CreateLeadInput {

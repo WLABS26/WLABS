@@ -30,7 +30,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
   return (
     <>
       <PageHeader eyebrow={p.eyebrow} title={p.title} description={p.description} />
-      <Pricing dict={dict.pricing} contactHref={`/${locale}/contact`} />
+      <Pricing dict={dict.pricing} contactHref={`/${locale}/contact`} checkoutHref={`/${locale}/checkout`} />
       <Offer dict={dict.offer} />
       <Faq dict={dict.faq} />
     </>

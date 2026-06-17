@@ -934,6 +934,37 @@ function buildMockWireframe(input: WireframeInput): string {
 </html>`;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Wireframe refinement (admin editor — apply a targeted change request)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const WIREFRAME_REFINE_SYSTEM_PROMPT = `You are editing an existing self-contained HTML wireframe for a business prospect. Apply ONLY the requested change — preserve every other section, style, and script exactly as-is. Absolute rules still apply:
+- Never add fabricated reviews, star ratings, award badges, or statistics.
+- Keep all inline CSS and JS; no external script/style src attributes.
+- All <img> tags must have onerror="this.style.display='none'" so broken images vanish cleanly.
+- The industry-specific logo mark in the nav must remain correct for this business type.
+- Brand palette colours must stay consistent with what the wireframe already uses.
+Return the COMPLETE updated HTML document from <!DOCTYPE html> to </html> — nothing else.`;
+
+export async function refineWireframe(params: {
+  currentHtml: string;
+  instruction: string;
+  input: WireframeInput;
+}): Promise<{ html: string | null; reply: string }> {
+  const prompt = `CHANGE REQUEST:\n${params.instruction}\n\n---\nCURRENT WIREFRAME HTML:\n${params.currentHtml}`;
+  const result = await generateText({
+    system: WIREFRAME_REFINE_SYSTEM_PROMPT,
+    prompt,
+    model: "claude-opus-4-8",
+    maxTokens: 16000,
+    temperature: 0.2,
+  });
+  if (!result || !result.includes("</html>")) {
+    return { html: null, reply: "AI refinement needs a configured AI provider (ANTHROPIC_API_KEY)." };
+  }
+  return { html: result, reply: "Applied." };
+}
+
 export class WireframeGenerationAgent extends Agent<WireframeInput, WireframeOutput> {
   readonly name = "wireframe_generation_agent";
   readonly description = "Generates a self-contained interactive HTML wireframe for a prospect's redesigned website.";

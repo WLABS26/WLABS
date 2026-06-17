@@ -43,7 +43,7 @@ export default async function HomePage({ params }: HomePageProps) {
       <Solution dict={dict.solution} />
       <Process dict={dict.process} />
       <Offer dict={dict.offer} />
-      <Pricing dict={dict.pricing} contactHref={contactHref} />
+      <Pricing dict={dict.pricing} contactHref={contactHref} checkoutHref={`/${locale}/checkout`} />
       <Examples dict={dict.examples} />
       <Trust dict={dict.trust} />
       <Cta dict={dict.cta} contactHref={contactHref} />

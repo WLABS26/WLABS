@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { NextResponse } from "next/server";
 
 import { constructWebhookEvent, markLeadAsPaid } from "@/modules/payments/stripe";
-import { runFullWebsiteBuild } from "@/modules/agents/website-build";
+import { onPublicPaymentSettled, runFullWebsiteBuild } from "@/modules/agents/website-build";
 
 /**
  * Stripe webhook handler. Verifies the signature and marks the lead as paid
@@ -34,7 +34,12 @@ export async function POST(request: Request) {
         stripeCustomerId: typeof session.customer === "string" ? session.customer : session.customer?.id ?? null,
         checkoutSessionId: session.id,
       });
-      after(() => runFullWebsiteBuild(leadId));
+      const isPublicCheckout = session.metadata?.leadId && !session.metadata?.previewSlug;
+      if (isPublicCheckout) {
+        after(() => onPublicPaymentSettled(leadId));
+      } else {
+        after(() => runFullWebsiteBuild(leadId));
+      }
     }
   }
 

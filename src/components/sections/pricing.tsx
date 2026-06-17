@@ -23,7 +23,15 @@ interface PricingDict {
   carePlanIncludes: string[];
 }
 
-export function Pricing({ dict, contactHref = "contact" }: { dict: PricingDict; contactHref?: string }) {
+export function Pricing({
+  dict,
+  contactHref = "contact",
+  checkoutHref,
+}: {
+  dict: PricingDict;
+  contactHref?: string;
+  checkoutHref?: string;
+}) {
   return (
     <section id="pricing" className="section-padding">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -52,7 +60,7 @@ export function Pricing({ dict, contactHref = "contact" }: { dict: PricingDict; 
                 ))}
               </ul>
               <Button asChild size="lg" className="mt-10 w-full">
-                <Link href={contactHref}>
+                <Link href={checkoutHref ?? contactHref}>
                   {dict.mvpCta}
                   <ArrowRight className="size-4" />
                 </Link>

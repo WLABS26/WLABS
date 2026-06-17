@@ -4,7 +4,7 @@ import { Plus, RotateCcw, Upload } from "lucide-react";
 
 import { LeadFilters } from "@/components/admin/lead-filters";
 import { AdminPagination } from "@/components/admin/pagination";
-import { LeadStatusBadge } from "@/components/admin/status-badge";
+import { LeadStatusBadge, PaymentStatusBadge } from "@/components/admin/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -82,6 +82,7 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
                   <TableHead>Industry</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Payment</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -103,6 +104,13 @@ export default async function AdminLeadsPage({ searchParams }: AdminLeadsPagePro
                     </TableCell>
                     <TableCell>
                       <LeadStatusBadge status={lead.status} />
+                    </TableCell>
+                    <TableCell>
+                      {lead.paymentStatus !== "unpaid" ? (
+                        <PaymentStatusBadge status={lead.paymentStatus} />
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted">{formatDateTime(lead.createdAt)}</TableCell>
                     <TableCell className="text-right">

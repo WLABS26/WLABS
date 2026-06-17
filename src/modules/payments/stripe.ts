@@ -124,6 +124,47 @@ export async function markLeadAsPaid(leadId: string, details?: MarkLeadAsPaidDet
   );
 }
 
+export interface CreateLeadCheckoutSessionParams {
+  leadId: string;
+  businessName: string;
+}
+
+/**
+ * Create a Stripe Checkout Session keyed on a Lead (not a Preview).
+ * Used by the public /checkout page for cold buyers who haven't seen a preview.
+ */
+export async function createLeadCheckoutSession(params: CreateLeadCheckoutSessionParams): Promise<string> {
+  const stripe = getStripeClient();
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    client_reference_id: params.leadId,
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: PRICING.mvp.currency.toLowerCase(),
+          unit_amount: PRICING.mvp.price * 100,
+          product_data: {
+            name: `${PRICING.mvp.name} — ${params.businessName}`,
+            description: `Fixed-price website redesign for ${params.businessName} (${PRICING.mvp.turnaround}).`,
+          },
+        },
+      },
+    ],
+    success_url: `${appUrl()}/checkout/success?lead=${params.leadId}`,
+    cancel_url: `${appUrl()}/pricing`,
+    metadata: { leadId: params.leadId },
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe did not return a checkout URL.");
+  }
+
+  await markCheckoutStarted(params.leadId, session.id);
+  return session.url;
+}
+
 /** Verify and parse a Stripe webhook payload using STRIPE_WEBHOOK_SECRET. */
 export function constructWebhookEvent(payload: string | Buffer, signature: string): Stripe.Event {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
